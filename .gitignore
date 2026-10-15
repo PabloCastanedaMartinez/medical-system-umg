@@ -1,0 +1,12 @@
+.gradle/
+**/build/
+.idea/
+*.iml
+.env
+.env.*
+!.env.example
+uploads/
+logs/
+credentials*.json
+tokens/
+.DS_Store
