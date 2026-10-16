@@ -87,7 +87,7 @@ export function AppointmentsPage() {
 
   const openRecord = (a: Appointment) => {
     if (isRecepcion) {
-      toast.warning('Acceso Restringido', 'El perfil de Recepción no tiene permisos para acceder al expediente clínico detallado');
+      toast.warning('Acceso restringido', 'El perfil de Recepción no tiene permisos para acceder al expediente clínico detallado');
       return;
     }
     navigate(`/expediente/${a.patientId}`);
@@ -95,7 +95,7 @@ export function AppointmentsPage() {
 
   const complete = async (a: Appointment) => {
     const ok = await confirm({
-      title: 'Finalizar Atención Médica',
+      title: 'Marcar como atendida',
       message: (
         <>
           <p>
@@ -108,12 +108,12 @@ export function AppointmentsPage() {
           </p>
         </>
       ),
-      confirmLabel: 'Marcar como Atendida',
+      confirmLabel: 'Marcar como atendida',
     });
     if (!ok) return;
     try {
       await appointmentsApi.complete(a.id);
-      toast.success('Cita Atendida', 'La cita fue marcada como ATENDIDA exitosamente');
+      toast.success('Cita atendida', 'La cita fue marcada como ATENDIDA exitosamente');
       reload();
     } catch (err) {
       toast.error('Error', errorMessage(err, 'No se pudo marcar la cita como atendida'));
@@ -122,17 +122,17 @@ export function AppointmentsPage() {
 
   const cancel = async (a: Appointment) => {
     const reason = await prompt({
-      title: 'Cancelar Cita Médica',
+      title: 'Cancelar cita',
       message: <p>Cancelación de cita para <strong>{a.patientFullName}</strong> ({formatDate(a.startTime)} {formatTime(a.startTime)})</p>,
       inputLabel: 'Motivo de la cancelación',
-      confirmLabel: 'Cancelar Cita',
+      confirmLabel: 'Cancelar cita',
       cancelLabel: 'Volver',
       tone: 'danger',
     });
     if (!reason) return;
     try {
       await appointmentsApi.cancel(a.id, reason);
-      toast.success('Cita Cancelada', 'La cita ha sido cancelada correctamente');
+      toast.success('Cita cancelada', 'La cita ha sido cancelada correctamente');
       reload();
     } catch (err) {
       toast.error('Error', `No fue posible cancelar la cita: ${errorMessage(err)}`);
@@ -142,8 +142,7 @@ export function AppointmentsPage() {
   return (
     <div className="page">
       <PageHeader
-        title="Agenda y Citas Médicas"
-        subtitle="Programación, reprogramación y seguimiento de citas"
+        title="Agenda"
         actions={
           <button
             className="btn btn-primary"
@@ -152,7 +151,7 @@ export function AppointmentsPage() {
               setFormOpen(true);
             }}
           >
-            <CalendarPlus size={16} aria-hidden /> Nueva Cita Médica
+            <CalendarPlus size={16} aria-hidden /> Nueva cita
           </button>
         }
       />
@@ -186,7 +185,7 @@ export function AppointmentsPage() {
             ))}
           </div>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as AppointmentStatus | '')} aria-label="Filtrar por estado">
-            <option value="">Todos los Estados</option>
+            <option value="">Todos los estados</option>
             {APPOINTMENT_STATUS_ORDER.map((s) => (
               <option key={s} value={s}>
                 {APPOINTMENT_STATUS[s].label}
@@ -250,14 +249,14 @@ export function AppointmentsPage() {
                       <td className="col-actions">
                         <div className="row-actions">
                           {!isRecepcion && (
-                            <button className="icon-button" title="Ver Expediente Clínico" aria-label="Ver Expediente Clínico" onClick={() => openRecord(a)}>
+                            <button className="icon-button" title="Ver expediente clínico" aria-label="Ver expediente clínico" onClick={() => openRecord(a)}>
                               <ClipboardList size={16} />
                             </button>
                           )}
                           <button
                             className="icon-button"
-                            title="Reprogramar Cita"
-                            aria-label="Reprogramar Cita"
+                            title="Reprogramar cita"
+                            aria-label="Reprogramar cita"
                             disabled={done}
                             onClick={() => {
                               setFormMode({ kind: 'reschedule', appointment: a });
@@ -266,10 +265,10 @@ export function AppointmentsPage() {
                           >
                             <RefreshCw size={16} />
                           </button>
-                          <button className="icon-button text-success" title="Marcar como Atendida" aria-label="Marcar como Atendida" disabled={done} onClick={() => complete(a)}>
+                          <button className="icon-button text-success" title="Marcar como atendida" aria-label="Marcar como atendida" disabled={done} onClick={() => complete(a)}>
                             <CheckCircle2 size={16} />
                           </button>
-                          <button className="icon-button text-danger" title="Cancelar Cita" aria-label="Cancelar Cita" disabled={done} onClick={() => cancel(a)}>
+                          <button className="icon-button text-danger" title="Cancelar cita" aria-label="Cancelar cita" disabled={done} onClick={() => cancel(a)}>
                             <XCircle size={16} />
                           </button>
                         </div>

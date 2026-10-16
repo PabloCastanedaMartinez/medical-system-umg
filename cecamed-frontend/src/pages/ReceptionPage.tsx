@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRightCircle, CalendarDays, CalendarPlus, Check, CheckCircle2, Clock, RefreshCw, Search, ThumbsUp, UserCheck, UserX } from 'lucide-react';
+import { ArrowRightCircle, CalendarDays, CalendarPlus, Check, Clock, RefreshCw, Search, ThumbsUp, UserCheck, UserX } from 'lucide-react';
 import { appointmentsApi } from '../api/endpoints';
 import { errorMessage } from '../api/client';
 import type { Appointment, AppointmentStatus } from '../api/types';
@@ -9,7 +9,7 @@ import { StatCard } from '../components/StatCard';
 import { AppointmentStatusBadge } from '../components/StatusBadge';
 import { EmptyState, ErrorBanner, PageHeader, Spinner } from '../components/Common';
 import { useApi, useNow } from '../utils/useApi';
-import { endOfDay, formatElapsed, formatTime, parseLocalDateTime, startOfDay, toIsoDateTime } from '../utils/format';
+import { endOfDay, formatElapsed, formatLongDate, formatTime, parseLocalDateTime, startOfDay, toIsoDateTime } from '../utils/format';
 import { APPOINTMENT_STATUS, isClosedForReception } from '../utils/labels';
 import { AppointmentFormModal, type AppointmentFormMode } from './AppointmentFormModal';
 
@@ -86,7 +86,7 @@ export function ReceptionPage() {
 
   const noShow = async (a: Appointment) => {
     const ok = await confirm({
-      title: 'Marcar Inasistencia',
+      title: 'Registrar inasistencia',
       message: (
         <>
           <p>
@@ -106,8 +106,8 @@ export function ReceptionPage() {
   return (
     <div className="page">
       <PageHeader
-        title="Recepción y Sala de Espera"
-        subtitle="Control ágil de flujo de pacientes, check-in y tiempos de espera en tiempo real"
+        title="Recepción"
+        subtitle={`Citas y sala de espera de hoy, ${formatLongDate(today).toLowerCase()}`}
         actions={
           <>
             <button className="btn btn-ghost" onClick={reload} disabled={loading}>
@@ -120,7 +120,7 @@ export function ReceptionPage() {
                 setFormOpen(true);
               }}
             >
-              <CalendarPlus size={16} aria-hidden /> Cita Rápida
+              <CalendarPlus size={16} aria-hidden /> Nueva cita
             </button>
           </>
         }
@@ -129,16 +129,16 @@ export function ReceptionPage() {
       {error && <ErrorBanner message={error} onRetry={reload} />}
 
       <div className="stat-grid">
-        <StatCard title="Citas de Hoy" value={data ? metrics.total : null} subtitle="Total agendadas" icon={CalendarDays} variant="primary" />
-        <StatCard title="En Sala de Espera" value={data ? metrics.waiting : null} subtitle="Pacientes aguardando" icon={Clock} variant="warning" />
-        <StatCard title="Atendidos Hoy" value={data ? metrics.done : null} subtitle="Consultas finalizadas" icon={CheckCircle2} variant="success" />
-        <StatCard title="Pendientes" value={data ? metrics.pending : null} subtitle="Por ingresar" icon={UserCheck} variant="accent" />
+        <StatCard title="Citas de hoy" value={data ? metrics.total : null} subtitle="agendadas para hoy" variant="primary" />
+        <StatCard title="En sala de espera" value={data ? metrics.waiting : null} subtitle="esperando ser atendidos" variant="warning" />
+        <StatCard title="Atendidos" value={data ? metrics.done : null} subtitle="consultas terminadas" variant="success" />
+        <StatCard title="Pendientes" value={data ? metrics.pending : null} subtitle="por llegar o confirmar" variant="accent" />
       </div>
 
       <div className="reception-grid">
         <section className="card">
           <div className="card-header">
-            <h2>Citas Médicas de Hoy</h2>
+            <h2>Citas de hoy</h2>
             {loading && <Spinner size={14} />}
           </div>
           <div className="toolbar">
@@ -189,7 +189,7 @@ export function ReceptionPage() {
                         <td className="col-actions">
                           <div className="row-actions">
                             {a.status === 'PROGRAMADA' && (
-                              <button className="icon-button" title="Confirmar Asistencia" aria-label="Confirmar Asistencia" disabled={busy} onClick={() => updateStatus(a, 'CONFIRMADA', 'Cita confirmada')}>
+                              <button className="icon-button" title="Confirmar asistencia" aria-label="Confirmar asistencia" disabled={busy} onClick={() => updateStatus(a, 'CONFIRMADA', 'Cita confirmada')}>
                                 <ThumbsUp size={15} />
                               </button>
                             )}
@@ -208,18 +208,18 @@ export function ReceptionPage() {
                                 disabled={busy}
                                 onClick={() => updateStatus(a, 'ATENDIDA', 'Paciente ingresado a consulta con el médico')}
                               >
-                                <ArrowRightCircle size={13} aria-hidden /> A Consulta
+                                <ArrowRightCircle size={13} aria-hidden /> A consulta
                               </button>
                             )}
                             {!closed && (
                               <>
-                                <button className="icon-button text-danger" title="Marcar No Asistió" aria-label="Marcar No Asistió" disabled={busy} onClick={() => noShow(a)}>
+                                <button className="icon-button text-danger" title="Marcar que no asistió" aria-label="Marcar que no asistió" disabled={busy} onClick={() => noShow(a)}>
                                   <UserX size={15} />
                                 </button>
                                 <button
                                   className="icon-button"
-                                  title="Reprogramar Cita"
-                                  aria-label="Reprogramar Cita"
+                                  title="Reprogramar cita"
+                                  aria-label="Reprogramar cita"
                                   disabled={busy}
                                   onClick={() => {
                                     setFormMode({ kind: 'reschedule', appointment: a });
@@ -243,7 +243,7 @@ export function ReceptionPage() {
 
         <section className="card waiting-room">
           <div className="card-header">
-            <h2>Monitor de Sala de Espera</h2>
+            <h2>Sala de espera</h2>
             <span className="muted">Pacientes en espera: {waiting.length}</span>
           </div>
           {waiting.length === 0 ? (
@@ -269,7 +269,7 @@ export function ReceptionPage() {
                       disabled={busyId === a.id}
                       onClick={() => updateStatus(a, 'ATENDIDA', `Paciente ${a.patientFullName} pasó al consultorio médico`)}
                     >
-                      <Check size={13} aria-hidden /> Pasar a Consulta
+                      <Check size={13} aria-hidden /> Pasar a consulta
                     </button>
                   </li>
                 );

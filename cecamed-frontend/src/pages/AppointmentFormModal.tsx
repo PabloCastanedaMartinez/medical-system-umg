@@ -135,7 +135,7 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
           reasonForVisit: reason.trim(),
           notes: blankToNull(notes),
         });
-        toast.success('Cita Agendada', `Cita confirmada para ${created.patientFullName ?? ''} el ${formatDateTime(created.startTime)}`);
+        toast.success('Cita agendada', `Cita confirmada para ${created.patientFullName ?? ''} el ${formatDateTime(created.startTime)}`);
         onSaved(created);
       } else {
         const updated = await appointmentsApi.reschedule(mode.appointment.id, {
@@ -143,7 +143,7 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
           newEndTime: slot.endTime,
           reason: rescheduleReason.trim(),
         });
-        toast.success('Cita Reprogramada', `La cita fue reprogramada con éxito para el ${formatDateTime(updated.startTime)}`);
+        toast.success('Cita reprogramada', `La cita fue reprogramada con éxito para el ${formatDateTime(updated.startTime)}`);
         onSaved(updated);
       }
     } catch (err) {
@@ -153,7 +153,7 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
     }
   };
 
-  const title = isReschedule ? 'Reprogramar Cita Médica' : 'Agendar Nueva Cita Médica';
+  const title = isReschedule ? 'Reprogramar cita' : 'Nueva cita';
   const subtitle = isReschedule
     ? `Seleccione el nuevo día y horario para el paciente ${mode.appointment.patientFullName ?? ''}`
     : 'Seleccione el paciente, fecha y horario disponible';
@@ -173,7 +173,7 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
           </button>
           <button type="submit" form="appointment-form" className="btn btn-primary" disabled={saving}>
             {saving ? <Spinner size={16} /> : <CalendarCheck size={16} aria-hidden />}
-            {isReschedule ? 'Confirmar Reprogramación' : 'Agendar Cita'}
+            {isReschedule ? 'Reprogramar' : 'Agendar cita'}
           </button>
         </>
       }
