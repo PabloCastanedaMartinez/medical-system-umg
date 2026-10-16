@@ -9,72 +9,99 @@
 :root {
   --font: 'Atkinson Hyperlegible Next Variable', 'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif;
 
-  /* Superficies y texto */
-  --bg: #eef1f0;
+  /* Colores tomados de theme-light.css de la versión de escritorio (JavaFX) */
+  --bg: #f8fafc;
   --surface: #ffffff;
-  --surface-sunken: #f5f7f6;
-  --hover: #f1f5f3;
-  --line: #d6ddda;
-  --line-strong: #aeb9b4;
-  --ink: #1c2421;
-  --ink-2: #3a4541;
-  --muted: #5f6b66;
+  --surface-sunken: #f8fafc;
+  --hover: #f1f5f9;
+  --line: #e2e8f0;
+  --line-strong: #cbd5e1;
+  --ink: #0f172a; /* .page-title, .stat-value */
+  --ink-2: #1e293b; /* .form-field-label */
+  --nav-ink: #334155; /* .nav-button */
+  --muted: #64748b; /* .page-subtitle, .stat-title */
+  --faint: #94a3b8; /* .stat-subtitle, .nav-section-label */
 
-  /* Marca */
-  --primary: #23604f;
-  --primary-hover: #1b4c3f;
-  --primary-soft: #e3eeea;
+  /* Rojo médico institucional: marca y acción principal (.brand-title, .primary-button) */
+  --brand: #d32f2f;
+  --primary: #d32f2f;
+  --primary-hover: #b71c1c;
   --on-primary: #ffffff;
-  --appbar: #23604f;
-  --appbar-ink: #ffffff;
-  --appbar-muted: #c9ddd6;
-  --brand: #b3302a; /* la cruz roja del CECAMed original */
+  /* Celeste médico: acciones secundarias y selección activa (.accent-button, .nav-button.active) */
+  --accent: #0288d1;
+  --accent-hover: #0277bd;
+  --accent-soft: #e0f2fe;
+  --accent-ink: #0288d1;
+  --on-accent: #ffffff;
 
-  /* Estados */
-  --ok: #2e7348;
-  --warn: #a86b0c;
-  --danger: #a83232;
-  --danger-soft: #f8e9e8;
-  --warn-soft: #fbf1df;
-  --info: #2b6690;
-  --neutral: #7c8783;
+  /* Barra superior (.cecamed-topbar) */
+  --appbar: #ffffff;
+  --appbar-line: #e2e8f0;
+
+  /* Estados (.badge-*) */
+  --ok-bg: #dcfce7;
+  --ok: #166534;
+  --ok-strong: #16a34a;
+  --warn-bg: #fef3c7;
+  --warn: #92400e;
+  --warn-strong: #d97706;
+  --danger-bg: #fee2e2;
+  --danger: #991b1b;
+  --danger-strong: #d32f2f;
+  --info-bg: #e0f2fe;
+  --info: #075985;
+  --neutral-bg: #f1f5f9;
+  --neutral: #475569;
 
   --radius: 6px;
-  --radius-lg: 8px;
-  --focus: 0 0 0 3px rgb(35 96 79 / 0.28);
-  --modal-shadow: 0 18px 40px -12px rgb(20 30 26 / 0.35);
+  --radius-lg: 10px;
+  --focus: 0 0 0 3px rgb(2 136 209 / 0.3);
+  --modal-shadow: 0 18px 40px -12px rgb(15 23 42 / 0.35);
   color-scheme: light;
 }
 
+/* Colores tomados de theme-dark.css de la versión de escritorio */
 :root[data-theme='dark'] {
-  --bg: #121715;
-  --surface: #1a201e;
-  --surface-sunken: #161c1a;
-  --hover: #212926;
-  --line: #2d3633;
-  --line-strong: #46524e;
-  --ink: #e4e9e7;
-  --ink-2: #c6cfcb;
-  --muted: #98a5a0;
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface-sunken: #172033;
+  --hover: #273449;
+  --line: #334155;
+  --line-strong: #475569;
+  --ink: #f8fafc;
+  --ink-2: #e2e8f0;
+  --nav-ink: #cbd5e1;
+  --muted: #94a3b8;
+  --faint: #64748b;
 
-  --primary: #79b9a2;
-  --primary-hover: #93c9b5;
-  --primary-soft: #1f312b;
-  --on-primary: #10201b;
-  --appbar: #17312a;
-  --appbar-ink: #eef4f1;
-  --appbar-muted: #9fbcb2;
-  --brand: #c4473f;
+  --brand: #ef5350;
+  --primary: #e53935;
+  --primary-hover: #d32f2f;
+  --on-primary: #ffffff;
+  --accent: #0288d1;
+  --accent-hover: #039be5;
+  --accent-soft: rgb(2 136 209 / 0.3);
+  --accent-ink: #38bdf8;
+  --on-accent: #ffffff;
 
-  --ok: #6fbf8a;
-  --warn: #e0a64a;
-  --danger: #e57d75;
-  --danger-soft: #3a2422;
-  --warn-soft: #362b18;
-  --info: #7fb2d8;
-  --neutral: #8b9792;
+  --appbar: #1e293b;
+  --appbar-line: #334155;
 
-  --focus: 0 0 0 3px rgb(121 185 162 / 0.35);
+  --ok-bg: rgb(34 197 94 / 0.2);
+  --ok: #4ade80;
+  --ok-strong: #4ade80;
+  --warn-bg: rgb(234 179 8 / 0.2);
+  --warn: #fde047;
+  --warn-strong: #fde047;
+  --danger-bg: rgb(239 68 68 / 0.2);
+  --danger: #f87171;
+  --danger-strong: #f87171;
+  --info-bg: rgb(14 165 233 / 0.2);
+  --info: #38bdf8;
+  --neutral-bg: rgb(148 163 184 / 0.2);
+  --neutral: #cbd5e1;
+
+  --focus: 0 0 0 3px rgb(56 189 248 / 0.35);
   --modal-shadow: 0 18px 40px -12px rgb(0 0 0 / 0.7);
   color-scheme: dark;
 }
@@ -121,7 +148,7 @@ p {
 }
 
 a {
-  color: var(--primary);
+  color: var(--accent-ink);
 }
 
 button,
@@ -200,7 +227,7 @@ input:focus,
 select:focus,
 textarea:focus {
   outline: none;
-  border-color: var(--primary);
+  border-color: var(--accent);
   box-shadow: var(--focus);
 }
 input:disabled,
@@ -237,7 +264,7 @@ textarea::placeholder {
   color: var(--ink-2);
 }
 .required {
-  color: var(--danger);
+  color: var(--danger-strong);
 }
 .field-hint {
   font-size: 13px;
@@ -245,7 +272,7 @@ textarea::placeholder {
 }
 .field-error {
   font-size: 13px;
-  color: var(--danger);
+  color: var(--danger-strong);
 }
 .field-end {
   justify-content: flex-end;
@@ -332,21 +359,23 @@ textarea::placeholder {
   opacity: 0.55;
   cursor: not-allowed;
 }
-.btn-primary,
-.btn-accent {
+.btn-primary {
   background: var(--primary);
   color: var(--on-primary);
 }
-.btn-primary:hover:not(:disabled),
-.btn-accent:hover:not(:disabled) {
+.btn-primary:hover:not(:disabled) {
   background: var(--primary-hover);
 }
-.btn-danger {
-  background: var(--danger);
-  color: #fff;
+.btn-accent {
+  background: var(--accent);
+  color: var(--on-accent);
 }
-:root[data-theme='dark'] .btn-danger {
-  color: #1a1010;
+.btn-accent:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.btn-danger {
+  background: var(--danger-strong);
+  color: #fff;
 }
 .btn-danger:hover:not(:disabled) {
   filter: brightness(0.93);
@@ -410,7 +439,7 @@ textarea::placeholder {
 .link {
   font-size: 14px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--accent-ink);
   text-decoration: none;
 }
 .link:hover {
@@ -437,42 +466,42 @@ textarea::placeholder {
   border-left: 0;
 }
 .segmented button.active {
-  background: var(--primary);
-  color: var(--on-primary);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
 }
 
-/* ---------- Estados (punto + texto) ---------- */
+/* ---------- Estados (colores de .badge-* de escritorio) ---------- */
 
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  font-size: 14px;
+  padding: 2px 10px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
-  color: var(--ink-2);
-}
-.badge::before {
-  content: '';
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--dot, var(--neutral));
-  flex-shrink: 0;
+  background: var(--badge-bg, var(--neutral-bg));
+  color: var(--badge-ink, var(--neutral));
 }
 .badge-success {
-  --dot: var(--ok);
+  --badge-bg: var(--ok-bg);
+  --badge-ink: var(--ok);
 }
 .badge-warning {
-  --dot: var(--warn);
+  --badge-bg: var(--warn-bg);
+  --badge-ink: var(--warn);
 }
 .badge-danger {
-  --dot: var(--danger);
+  --badge-bg: var(--danger-bg);
+  --badge-ink: var(--danger);
 }
 .badge-info {
-  --dot: var(--info);
+  --badge-bg: var(--info-bg);
+  --badge-ink: var(--info);
 }
 .badge-neutral {
-  --dot: var(--neutral);
+  --badge-bg: var(--neutral-bg);
+  --badge-ink: var(--neutral);
 }
 
 /* ---------- Avisos ---------- */
@@ -484,11 +513,11 @@ textarea::placeholder {
   margin-bottom: 14px;
 }
 .alert-danger {
-  background: var(--danger-soft);
+  background: var(--danger-bg);
   color: var(--danger);
 }
 .alert-warning {
-  background: var(--warn-soft);
+  background: var(--warn-bg);
   color: var(--warn);
 }
 .error-banner {
@@ -499,7 +528,7 @@ textarea::placeholder {
   padding: 10px 14px;
   margin: 0 0 16px;
   border-radius: var(--radius);
-  background: var(--danger-soft);
+  background: var(--danger-bg);
   color: var(--danger);
   font-size: 14px;
 }
@@ -507,7 +536,7 @@ textarea::placeholder {
 .spinner {
   display: inline-block;
   border: 2px solid var(--line-strong);
-  border-top-color: var(--primary);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
   flex-shrink: 0;
@@ -529,7 +558,7 @@ textarea::placeholder {
   gap: 10px;
   padding: 36px 16px;
   text-align: center;
-  color: var(--line-strong);
+  color: var(--faint);
 }
 .empty-state svg {
   width: 26px;
@@ -553,15 +582,16 @@ textarea::placeholder {
   top: 0;
   z-index: 30;
   background: var(--appbar);
-  color: var(--appbar-ink);
+  border-bottom: 1px solid var(--appbar-line);
+  color: var(--ink);
 }
 .appbar-inner {
   max-width: 1480px;
   margin: 0 auto;
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: 28px;
-  min-height: 54px;
+  min-height: 58px;
   padding: 0 24px;
 }
 
@@ -569,7 +599,7 @@ textarea::placeholder {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  color: inherit;
+  color: var(--brand);
   text-decoration: none;
   flex-shrink: 0;
 }
@@ -585,7 +615,7 @@ textarea::placeholder {
 
 .mainnav {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: 2px;
   flex: 1;
   min-width: 0;
@@ -593,21 +623,20 @@ textarea::placeholder {
 .mainnav-link {
   display: flex;
   align-items: center;
-  padding: 0 12px;
-  color: var(--appbar-muted);
+  padding: 7px 12px;
+  border-radius: var(--radius);
+  color: var(--nav-ink);
   text-decoration: none;
   font-weight: 600;
   font-size: 15px;
-  border-bottom: 3px solid transparent;
-  border-top: 3px solid transparent;
   white-space: nowrap;
 }
 .mainnav-link:hover {
-  color: var(--appbar-ink);
+  background: var(--hover);
 }
 .mainnav-link.active {
-  color: var(--appbar-ink);
-  border-bottom-color: var(--appbar-ink);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
 }
 
 .appbar-tools {
@@ -624,12 +653,12 @@ textarea::placeholder {
   border: 0;
   border-radius: var(--radius);
   background: transparent;
-  color: var(--appbar-muted);
+  color: var(--muted);
   cursor: pointer;
 }
 .appbar-icon:hover {
-  color: var(--appbar-ink);
-  background: rgb(255 255 255 / 0.1);
+  color: var(--ink);
+  background: var(--hover);
 }
 .appbar-user {
   display: flex;
@@ -642,6 +671,7 @@ textarea::placeholder {
 .appbar-user-name {
   font-weight: 600;
   font-size: 14px;
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -649,14 +679,14 @@ textarea::placeholder {
 }
 .appbar-user-role {
   font-size: 13px;
-  color: var(--appbar-muted);
+  color: var(--muted);
 }
 .menu-toggle {
   display: none;
 }
 
 .statusline {
-  background: var(--surface);
+  background: var(--bg);
   border-bottom: 1px solid var(--line);
 }
 .statusline-inner {
@@ -675,7 +705,7 @@ textarea::placeholder {
   color: var(--ink-2);
 }
 .statusline-warn {
-  color: var(--warn);
+  color: var(--warn-strong);
   font-weight: 600;
 }
 
@@ -775,7 +805,7 @@ textarea::placeholder {
 .stat-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--ink-2);
+  color: var(--muted);
 }
 .stat-value {
   font-size: 34px;
@@ -786,10 +816,10 @@ textarea::placeholder {
 }
 .stat-subtitle {
   font-size: 13px;
-  color: var(--muted);
+  color: var(--faint);
 }
 .stat-attention .stat-value {
-  color: var(--warn);
+  color: var(--warn-strong);
 }
 
 /* ---------- Barra de filtros ---------- */
@@ -880,10 +910,7 @@ textarea::placeholder {
   cursor: pointer;
 }
 .table-selectable tbody tr.selected td {
-  background: var(--primary-soft);
-}
-.table-selectable tbody tr.selected td:first-child {
-  box-shadow: inset 3px 0 0 var(--primary);
+  background: var(--accent-soft);
 }
 .col-actions {
   text-align: right !important;
@@ -924,7 +951,7 @@ textarea::placeholder {
 }
 .tabs button.active {
   background: var(--surface);
-  color: var(--ink);
+  color: var(--accent-ink);
   border-color: var(--line-strong);
   border-bottom: 1px solid var(--surface);
 }
@@ -938,7 +965,7 @@ textarea::placeholder {
   display: grid;
   place-items: center;
   padding: 16px;
-  background: rgb(18 26 23 / 0.5);
+  background: rgb(15 23 42 / 0.5);
 }
 .modal {
   width: 100%;
@@ -1018,8 +1045,9 @@ textarea::placeholder {
   align-items: flex-start;
   gap: 10px;
   padding: 12px 12px 12px 14px;
-  background: var(--ink);
-  color: var(--surface);
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   box-shadow: var(--modal-shadow);
 }
@@ -1028,28 +1056,16 @@ textarea::placeholder {
   flex-shrink: 0;
 }
 .toast-success .toast-icon {
-  color: #8fd1a6;
+  color: var(--ok-strong);
 }
 .toast-warning .toast-icon {
-  color: #f0c27a;
+  color: var(--warn-strong);
 }
 .toast-error .toast-icon {
-  color: #f2a29b;
+  color: var(--danger-strong);
 }
 .toast-info .toast-icon {
-  color: #a9cde6;
-}
-:root[data-theme='dark'] .toast-warning .toast-icon {
-  color: #8a5a0a;
-}
-:root[data-theme='dark'] .toast-error .toast-icon {
-  color: #9b2c2c;
-}
-:root[data-theme='dark'] .toast-info .toast-icon {
-  color: #2b6690;
-}
-:root[data-theme='dark'] .toast-success .toast-icon {
-  color: #2e7348;
+  color: var(--accent-ink);
 }
 .toast-body {
   flex: 1;
@@ -1060,7 +1076,7 @@ textarea::placeholder {
   min-width: 0;
 }
 .toast-body span {
-  opacity: 0.8;
+  color: var(--muted);
 }
 .toast .icon-button {
   width: 24px;
@@ -1086,10 +1102,10 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 54px;
+  min-height: 58px;
   padding: 0 24px;
   background: var(--appbar);
-  color: var(--appbar-ink);
+  border-bottom: 1px solid var(--appbar-line);
 }
 .login-main {
   flex: 1;
@@ -1163,8 +1179,10 @@ textarea::placeholder {
   padding-left: 0;
   border-left: 0;
 }
-.patient-meta .badge::before {
-  display: none;
+.patient-meta > .badge {
+  border-left: 0;
+  padding: 2px 10px;
+  margin-left: 14px;
 }
 .allergy-line {
   display: flex;
@@ -1175,7 +1193,7 @@ textarea::placeholder {
   color: var(--ink-2);
 }
 .allergy-line.has-allergies {
-  color: var(--danger);
+  color: var(--danger-strong);
   font-weight: 600;
 }
 .patient-switch {
@@ -1278,12 +1296,12 @@ textarea::placeholder {
   cursor: pointer;
 }
 .slot:hover:not(:disabled) {
-  border-color: var(--primary);
+  border-color: var(--accent);
 }
 .slot.selected {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--on-primary);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
   font-weight: 600;
 }
 .slot:disabled {
@@ -1351,10 +1369,10 @@ textarea::placeholder {
   color: var(--ink);
 }
 .waiting-list li.mid-wait .waiting-elapsed {
-  color: var(--warn);
+  color: var(--warn-strong);
 }
 .waiting-list li.long-wait .waiting-elapsed {
-  color: var(--danger);
+  color: var(--danger-strong);
 }
 .waiting-list .btn {
   grid-area: action;
@@ -1389,11 +1407,11 @@ textarea::placeholder {
   color: var(--muted);
 }
 .theme-option.selected {
-  border-color: var(--primary);
-  box-shadow: inset 0 0 0 1px var(--primary);
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 .theme-option.selected svg {
-  color: var(--primary);
+  color: var(--accent-ink);
 }
 .swatches {
   display: grid;
@@ -1413,10 +1431,10 @@ textarea::placeholder {
   background: var(--primary);
 }
 .swatch-accent {
-  background: var(--brand);
+  background: var(--accent);
 }
 .swatch-success {
-  background: var(--ok);
+  background: var(--ok-strong);
 }
 
 .info-list {
@@ -1464,7 +1482,7 @@ textarea::placeholder {
 @media (max-width: 960px) {
   .appbar-inner {
     gap: 12px;
-    padding: 0 16px;
+    padding: 8px 16px;
     flex-wrap: wrap;
   }
   .menu-toggle {
@@ -1481,13 +1499,7 @@ textarea::placeholder {
     display: flex;
   }
   .mainnav-link {
-    padding: 10px 4px;
-    border: 0;
-    border-left: 3px solid transparent;
-  }
-  .mainnav-link.active {
-    border-left-color: var(--appbar-ink);
-    padding-left: 10px;
+    padding: 10px 12px;
   }
   .statusline-inner,
   .content {
