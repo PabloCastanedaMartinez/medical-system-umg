@@ -13,10 +13,10 @@ export type Tone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 export const APPOINTMENT_STATUS: Record<AppointmentStatus, { label: string; tone: Tone }> = {
   PROGRAMADA: { label: 'Programada', tone: 'info' },
   CONFIRMADA: { label: 'Confirmada', tone: 'success' },
-  EN_SALA: { label: 'En Sala', tone: 'warning' },
+  EN_SALA: { label: 'En sala', tone: 'warning' },
   ATENDIDA: { label: 'Atendida', tone: 'success' },
   REPROGRAMADA: { label: 'Reprogramada', tone: 'info' },
-  NO_ASISTIO: { label: 'No Asistió', tone: 'danger' },
+  NO_ASISTIO: { label: 'No asistió', tone: 'danger' },
   CANCELADA: { label: 'Cancelada', tone: 'danger' },
 };
 
@@ -33,8 +33,8 @@ export const APPOINTMENT_STATUS_ORDER: AppointmentStatus[] = [
 export const GOOGLE_SYNC: Record<GoogleSyncStatus, { label: string; tone: Tone }> = {
   SYNCED: { label: 'Sincronizado', tone: 'success' },
   PENDING: { label: 'Pendiente', tone: 'warning' },
-  FAILED: { label: 'Fallo Sync', tone: 'danger' },
-  NOT_APPLICABLE: { label: 'Desactivado', tone: 'neutral' },
+  FAILED: { label: 'Error al sincronizar', tone: 'danger' },
+  NOT_APPLICABLE: { label: 'Sin calendario', tone: 'neutral' },
 };
 
 export const GENDER_LABEL: Record<Gender, string> = {

@@ -4,21 +4,20 @@ interface StatCardProps {
   title: string;
   value: number | string | null;
   subtitle: string;
-  icon: LucideIcon;
+  /** Se conserva por compatibilidad; el resumen ya no usa íconos decorativos. */
+  icon?: LucideIcon;
+  /** "warning" resalta la cifra cuando es mayor que cero (p. ej. pacientes esperando). */
   variant: 'primary' | 'warning' | 'success' | 'accent';
 }
 
-export function StatCard({ title, value, subtitle, icon: Icon, variant }: StatCardProps) {
+/** Una cifra del resumen del día. Se agrupan dentro de `.stat-grid`, que las muestra como una sola franja. */
+export function StatCard({ title, value, subtitle, variant }: StatCardProps) {
+  const attention = variant === 'warning' && typeof value === 'number' && value > 0;
   return (
-    <div className={`card stat-card stat-${variant}`}>
-      <div className="stat-text">
-        <span className="stat-title">{title}</span>
-        <span className="stat-value">{value ?? '—'}</span>
-        <span className="stat-subtitle">{subtitle}</span>
-      </div>
-      <div className="stat-icon" aria-hidden>
-        <Icon size={22} />
-      </div>
+    <div className={`stat${attention ? ' stat-attention' : ''}`}>
+      <span className="stat-title">{title}</span>
+      <span className="stat-value">{value ?? '–'}</span>
+      <span className="stat-subtitle">{subtitle}</span>
     </div>
   );
 }

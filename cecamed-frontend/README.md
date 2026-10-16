@@ -68,7 +68,7 @@ src/
 ├── utils/          # Fechas, etiquetas en español y hooks
 ├── App.tsx         # Rutas
 ├── main.tsx        # Punto de entrada
-└── styles.css      # Estilos y paleta (rojo clínico y celeste médico)
+└── styles.css      # Estilos: verde de la marca, grises fríos y tipografía Atkinson Hyperlegible
 docs/
 └── contrato-api-esperado.md   # Endpoints que necesita el frontend
 ```
