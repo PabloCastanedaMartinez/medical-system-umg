@@ -3,12 +3,13 @@ spring:
     name: cecamed-backend
   profiles:
     default: local
-  config:
-    import: optional:file:.env[.properties]
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5433/cecamed_backend}
-    username: ${DB_USERNAME:cecamed_backend}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+    hikari:
+      # También fija UTC para SQL directo y valores DEFAULT de PostgreSQL.
+      connection-init-sql: SET TIME ZONE 'UTC'
   jpa:
     open-in-view: false
     hibernate:
@@ -23,7 +24,14 @@ spring:
     locations: classpath:db/migration
     default-schema: cecamed
     schemas: cecamed
+    create-schemas: true
+    validate-on-migrate: true
+    validate-migration-naming: true
+    baseline-on-migrate: false
     clean-disabled: true
+  sql:
+    init:
+      mode: never
   mvc:
     problemdetails:
       enabled: true

@@ -1,8 +1,5 @@
-spring:
-  datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-
+# Las credenciales obligatorias se heredan de application.yml.
+# Este perfil no importa el archivo .env de desarrollo.
 server:
   address: ${SERVER_ADDRESS:0.0.0.0}
 

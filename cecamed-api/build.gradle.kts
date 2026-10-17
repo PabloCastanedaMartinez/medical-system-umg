@@ -13,6 +13,7 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.security:spring-security-test")
+    testImplementation("org.flywaydb:flyway-core")
     testRuntimeOnly("com.h2database:h2")
 }
 
@@ -30,4 +31,25 @@ tasks.bootJar {
 
 tasks.bootRun {
     workingDir = rootProject.projectDir
+}
+
+tasks.test {
+    useJUnitPlatform { excludeTags("postgres") }
+}
+
+// Verificación explícita contra una base desechable; build no necesita PostgreSQL.
+tasks.register<Test>("postgresTest") {
+    description = "Verifica Flyway, PostgreSQL y UTC contra una base de pruebas aislada."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform { includeTags("postgres") }
+    shouldRunAfter(tasks.test)
+    // El estado de una base externa puede cambiar entre ejecuciones.
+    outputs.upToDateWhen { false }
+    doFirst {
+        listOf("TEST_DB_URL", "TEST_DB_USERNAME", "TEST_DB_PASSWORD").forEach {
+            require(!System.getenv(it).isNullOrBlank()) { "Define $it para una base PostgreSQL desechable." }
+        }
+    }
 }
