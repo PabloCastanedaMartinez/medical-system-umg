@@ -17,7 +17,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-/** Sustituye a UserSession/AuthenticationService de JavaFX: la sesión vive en el servidor (cookie). */
+/** Sustituye a UserSession/AuthenticationService de JavaFX: la sesión es un token Bearer guardado en la pestaña. */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [checking, setChecking] = useState(true);

@@ -73,12 +73,16 @@ export function buildUrl(path: string, query?: Record<string, QueryValue>): stri
   return `${API_BASE_URL}${path}${qs ? `?${qs}` : ''}`;
 }
 
-export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+/**
+ * Envía la petición y aplica las reglas comunes a todas las llamadas: token Bearer, sesión
+ * expirada (401) y errores Problem Details. Devuelve la respuesta solo si fue exitosa.
+ */
+async function send(path: string, options: RequestOptions, accept: string): Promise<Response> {
   const { method = 'GET', body, query, silentAuth = false, signal } = options;
   const isForm = body instanceof FormData;
 
   // Solo cabeceras permitidas por el CORS del backend: Authorization, Content-Type y Accept.
-  const headers: Record<string, string> = { Accept: 'application/json, application/problem+json' };
+  const headers: Record<string, string> = { Accept: accept };
   if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json';
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
@@ -109,7 +113,12 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     }
     throw new ApiError(response.status, problemMessage(errorBody, response.status), errorBody);
   }
+  return response;
+}
 
+/** Petición JSON a la API. */
+export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const response = await send(path, options, 'application/json, application/problem+json');
   if (response.status === 204) {
     return undefined as T;
   }
@@ -118,6 +127,15 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 }
 
 /** Texto para el usuario a partir de Problem Details (detail + errores de validación). */
+/**
+ * Descarga un archivo binario (por ejemplo, un documento del paciente) con las mismas reglas que
+ * `request`: envía el token, cierra la sesión ante un 401 e interpreta los errores Problem Details.
+ */
+export async function requestBlob(path: string, options: RequestOptions = {}): Promise<Blob> {
+  const response = await send(path, options, '*/*');
+  return response.blob();
+}
+
 function problemMessage(body: ApiErrorBody | null, status: number): string {
   const fieldMessages = (body?.errors ?? []).map((e) => e.message).filter(Boolean);
   if (body?.code === 'VALIDATION_ERROR' && fieldMessages.length > 0) {

@@ -82,15 +82,17 @@ export function MainLayout() {
               aria-label={isDark ? 'Usar tema claro' : 'Usar tema oscuro'}
               title={isDark ? 'Tema claro' : 'Tema oscuro'}
             >
-              {isDark ? <Sun size={17} /> : <Moon size={17} />}
+              {isDark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <div className="appbar-user" title={user?.fullName}>
-              <span className="appbar-user-name">{user?.fullName}</span>
-              <span className="appbar-user-role">{user?.roleDisplayName}</span>
+            <div className="appbar-session">
+              <div className="appbar-user" title={user?.fullName}>
+                <span className="appbar-user-name">{user?.fullName}</span>
+                <span className="appbar-user-role">{user?.roleDisplayName}</span>
+              </div>
+              <button className="appbar-icon" onClick={handleLogout} aria-label="Cerrar sesión" title="Cerrar sesión">
+                <LogOut size={18} />
+              </button>
             </div>
-            <button className="appbar-icon" onClick={handleLogout} aria-label="Cerrar sesión" title="Cerrar sesión">
-              <LogOut size={17} />
-            </button>
             <button
               className="appbar-icon menu-toggle"
               onClick={() => setMenuOpen((v) => !v)}

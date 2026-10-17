@@ -1,4 +1,4 @@
-import { API_BASE_URL, ApiError, buildUrl, getAccessToken, request, setAccessToken } from './client';
+import { API_BASE_URL, request, requestBlob, setAccessToken } from './client';
 import type {
   Appointment,
   AppointmentRequest,
@@ -74,13 +74,11 @@ export const documentsApi = {
     return request<PatientDocument>(`/patients/${patientId}/documents`, { method: 'POST', body: form });
   },
   remove: (id: number) => request<void>(`/documents/${id}`, { method: 'DELETE' }),
-  /** Descarga el archivo con el token (un enlace <a> no puede enviar Authorization). */
-  async fetchFile(id: number): Promise<Blob> {
-    const token = getAccessToken();
-    const res = await fetch(buildUrl(`/documents/${id}/file`), { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-    if (!res.ok) throw new ApiError(res.status, 'No fue posible obtener el documento', null);
-    return res.blob();
-  },
+  /**
+   * Descarga el archivo con el cliente común (un enlace <a> no puede enviar Authorization).
+   * Así un 401 cierra la sesión y los errores muestran el mensaje del backend.
+   */
+  fetchFile: (id: number) => requestBlob(`/documents/${id}/file`),
 };
 
 export const appointmentsApi = {

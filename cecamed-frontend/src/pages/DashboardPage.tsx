@@ -3,7 +3,7 @@ import { CalendarDays } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { dashboardApi } from '../api/endpoints';
 import { useApi } from '../utils/useApi';
-import { formatLongDate, formatTime } from '../utils/format';
+import { clinicNow, formatLongDate, formatTime } from '../utils/format';
 import { StatCard } from '../components/StatCard';
 import { AppointmentStatusBadge } from '../components/StatusBadge';
 import { EmptyState, ErrorBanner, PageHeader, Spinner } from '../components/Common';
@@ -20,7 +20,7 @@ export function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { data, loading, error, reload } = useApi(() => dashboardApi.summary(), []);
-  const today = new Date();
+  const today = clinicNow();
 
   return (
     <div className="page">

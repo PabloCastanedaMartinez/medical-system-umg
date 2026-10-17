@@ -10,7 +10,7 @@ import { useConfirm } from '../components/ConfirmDialog';
 import { Badge } from '../components/StatusBadge';
 import { EmptyState, ErrorBanner, Field, PageHeader, Spinner } from '../components/Common';
 import { useApi } from '../utils/useApi';
-import { combineDateTime, formatDateTime, formatLocalTime, toIsoDate } from '../utils/format';
+import { clinicNow, combineDateTime, formatDateTime, formatLocalTime, toIsoDate } from '../utils/format';
 import { BLOCK_TYPE_LABEL, DAY_LABEL, DAY_ORDER } from '../utils/labels';
 
 type Tab = 'appearance' | 'schedules' | 'blocks' | 'system';
@@ -128,7 +128,7 @@ function SchedulesTab() {
 function BlocksTab() {
   const toast = useToast();
   const { confirm } = useConfirm();
-  const today = toIsoDate(new Date());
+  const today = toIsoDate(clinicNow());
   const { data, loading, error, reload } = useApi(() => scheduleApi.blocks(), []);
   const [form, setForm] = useState({
     title: '',
