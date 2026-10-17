@@ -3,6 +3,7 @@ name: cecamed-backend
 services:
   postgres:
     image: postgres:16
+    command: ["postgres", "-c", "timezone=UTC", "-c", "log_timezone=UTC"]
     environment:
       POSTGRES_DB: ${DB_NAME:-cecamed_backend}
       POSTGRES_USER: ${DB_USERNAME:-cecamed_backend}

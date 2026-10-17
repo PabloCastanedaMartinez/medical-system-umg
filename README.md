@@ -65,14 +65,15 @@ docker compose up -d --wait postgres
 ./gradlew :cecamed-api:bootRun
 ```
 
-El perfil predeterminado es `local`. Spring importa `.env` como propiedades desde
-la raíz. Las variables exportadas en el entorno tienen prioridad. En el IDE,
+El perfil predeterminado es `local`. Solo este perfil importa `.env` como propiedades
+desde la raíz. Las variables exportadas en el entorno tienen prioridad. En el IDE,
 seleccionar JDK 21 y usar la raíz de este proyecto como directorio de trabajo.
 En Windows, utilizar `gradlew.bat`.
 
 La API escucha en `http://127.0.0.1:8080` y PostgreSQL publica el puerto `5433`.
 Para conectar desde otro equipo, configurar `SERVER_ADDRESS` y el origen CORS.
-Si se cambia `DB_PORT`, actualizar también el puerto en `DB_URL`.
+La URL local se construye con `DB_HOST`, `DB_PORT` y `DB_NAME`. Si se proporciona
+`DB_URL`, se utiliza esa URL completa en lugar de construirla.
 
 | Recurso | Dirección local |
 | --- | --- |
@@ -95,8 +96,9 @@ curl http://localhost:8080/actuator/health
 
 | Variable | Uso |
 | --- | --- |
-| `DB_URL` | URL JDBC; el ejemplo apunta a la base nueva `cecamed_backend`. |
-| `DB_NAME` | Base que crea Compose. Debe coincidir con la base de `DB_URL`. |
+| `DB_URL` | URL JDBC opcional en local y obligatoria en producción. Prevalece sobre host, puerto y nombre. |
+| `DB_HOST` | Host de la conexión local; predeterminado `localhost`. |
+| `DB_NAME` | Base que crea Compose y nombre usado para construir la URL local; predeterminado `cecamed_backend`. |
 | `DB_USERNAME` / `DB_PASSWORD` | Credenciales de PostgreSQL. |
 | `DB_PORT` | Puerto local que publica Compose; predeterminado `5433`. |
 | `SERVER_PORT` | Puerto HTTP; predeterminado `8080`. |
@@ -104,8 +106,11 @@ curl http://localhost:8080/actuator/health
 | `CORS_ALLOWED_ORIGINS` | Orígenes del frontend separados por comas, sin barra final. |
 | `SPRING_PROFILES_ACTIVE` | `local` o `prod`; predeterminado `local`. |
 
-El perfil `prod` exige URL y usuario explícitos, desactiva OpenAPI/Swagger y no
-autoriza orígenes CORS salvo los configurados. La autenticación web todavía no está
+El perfil `prod` exige `DB_URL`, `DB_USERNAME` y `DB_PASSWORD` mediante el entorno
+o configuración externa; no carga `.env`. Desactiva OpenAPI/Swagger y no
+autoriza orígenes CORS salvo los configurados. Activarlo con `SPRING_PROFILES_ACTIVE=prod`
+sin combinarlo con `local`. Si se define `DB_URL` en local, su base y puerto deben
+coincidir con los de Compose. La autenticación web todavía no está
 implementada: Spring Security bloquea todas las rutas salvo los recursos técnicos
 indicados. No existen usuarios ni contraseñas de aplicación predefinidos.
 
@@ -117,11 +122,28 @@ indicados. No existen usuarios ni contraseñas de aplicación predefinidos.
 java -jar cecamed-api/build/libs/cecamed-backend.jar
 ```
 
-Las pruebas cubren arranque de contexto, contrato OpenAPI, errores HTTP,
-validación de entradas, bloqueo de rutas y CORS. Usan H2 con Flyway desactivado;
-no certifican las migraciones ni el comportamiento específico de PostgreSQL.
-Al incorporar persistencia de negocio se añadirán pruebas contra PostgreSQL.
+Las pruebas normales cubren arranque de contexto, contrato OpenAPI, errores HTTP,
+validación de entradas, bloqueo de rutas, CORS, separación de perfiles y reloj UTC.
+Usan H2 con Flyway desactivado y no requieren PostgreSQL.
 Los informes se generan en `cecamed-api/build/reports/tests/test/index.html`.
+
+Para verificar PostgreSQL y Flyway se utiliza una base desechable independiente,
+sin el volumen ni las credenciales de desarrollo:
+
+```bash
+docker compose -f compose.test.yaml up -d --wait
+TEST_DB_URL=jdbc:postgresql://localhost:5434/cecamed_test \
+TEST_DB_USERNAME=cecamed_test TEST_DB_PASSWORD=test-only \
+./gradlew :cecamed-api:postgresTest
+docker compose -f compose.test.yaml down
+```
+
+La tarea `postgresTest` exige las tres variables `TEST_DB_*`; nunca recurre a `DB_*`.
+Usa el perfil `prod` con una conexión de prueba y comprueba la creación del esquema
+y del historial Flyway, la repetición de la migración sin cambios, la zona UTC de
+la conexión y la conservación de instantes en `TIMESTAMPTZ`. Sus informes están en
+`cecamed-api/build/reports/tests/postgresTest/index.html`. Ejecutar esta tarea también
+en CI con una base aislada. Los datos de `compose.test.yaml` se descartan al detenerla.
 
 ## Base de datos y alcance de esta etapa
 
@@ -129,6 +151,14 @@ Se mantienen las tecnologías de persistencia del CECAMed original, con una base
 y un volumen nuevos. Flyway es el único responsable de evolucionar el esquema;
 Hibernate utiliza `ddl-auto=validate`. Aún no existen tablas de negocio ni
 migraciones SQL versionadas. Flyway preparará su esquema e historial al arrancar.
+La validación de migraciones y de sus nombres está habilitada; `clean` y el
+baseline automático están deshabilitados. La inicialización mediante `schema.sql`
+o `data.sql` también está deshabilitada para que Flyway sea el único responsable.
+
+El servidor PostgreSQL de Compose y cada conexión del pool usan UTC, igual que
+Hibernate y el bean inyectable `Clock`. Para obtener el instante actual se debe
+usar `Instant.now(clock)`; las fechas civiles continúan siendo `LocalDate`. La
+conversión para mostrar horarios de la clínica usará `America/Guatemala`.
 
 La entrega incluye módulos, configuración, manejo uniforme de errores, CORS,
 seguridad restrictiva, OpenAPI, información de versión y salud del servicio.

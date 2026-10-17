@@ -86,8 +86,14 @@ servicio se revisarán sus reglas y pruebas, sin trasladar dependencias de JavaF
   configuración se revisará junto con el mecanismo de autenticación.
 - **Datos:** base independiente, esquema `cecamed`, migraciones Flyway y
   validación Hibernate. No usar `ddl-auto=update` ni editar migraciones aplicadas.
-  Los cambios PostgreSQL se probarán contra PostgreSQL al añadirlos.
-- **Tiempo:** `Clock` UTC inyectable. Los futuros eventos persistirán instantes
+  Flyway valida nombres y checksums; `clean`, baseline automático y los scripts
+  de inicialización de Spring SQL están deshabilitados. `postgresTest` verifica
+  el arranque sobre una base aislada; las pruebas normales usan H2 sin Flyway.
+- **Perfiles:** `local` carga `.env` y construye la URL desde host, puerto y nombre
+  cuando no hay `DB_URL`. `prod` requiere credenciales externas y no importa `.env`.
+  `test` y `postgres-test` solo existen en recursos de pruebas.
+- **Tiempo:** `Clock` UTC inyectable, Hibernate en UTC y conexiones del pool
+  inicializadas con `SET TIME ZONE 'UTC'`. Los futuros eventos persistirán instantes
   y la agenda convertirá horarios usando una zona explícita, inicialmente la del
   CECAMed original (`America/Guatemala`).
 - **Archivos:** límites multipart configurados; almacenamiento, permisos y
