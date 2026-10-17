@@ -7,7 +7,7 @@ import { patientsApi } from '../api/endpoints';
 import { errorMessage } from '../api/client';
 import type { BloodType, Gender, Patient, PatientRequest } from '../api/types';
 import { BLOOD_TYPE_LONG, GENDER_LABEL } from '../utils/labels';
-import { blankToNull, toIsoDate } from '../utils/format';
+import { blankToNull, clinicNow, toIsoDate } from '../utils/format';
 
 interface Props {
   open: boolean;
@@ -70,7 +70,7 @@ export function PatientFormModal({ open, patient, onClose, onSaved }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const isEdit = patient !== null;
-  const today = toIsoDate(new Date());
+  const today = toIsoDate(clinicNow());
 
   useEffect(() => {
     if (open) {

@@ -6,7 +6,7 @@ import { useToast } from '../components/Toast';
 import { appointmentsApi, patientsApi } from '../api/endpoints';
 import { errorMessage } from '../api/client';
 import type { Appointment, AvailableSlot, Patient } from '../api/types';
-import { blankToNull, formatDateTime, formatTime, parseLocalDateTime, toIsoDate } from '../utils/format';
+import { blankToNull, clinicNow, formatDateTime, formatTime, parseLocalDateTime, startOfDay, toIsoDate } from '../utils/format';
 
 export type AppointmentFormMode =
   | { kind: 'create'; date?: Date; patientId?: number }
@@ -27,7 +27,7 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [patientFilter, setPatientFilter] = useState('');
   const [patientId, setPatientId] = useState<number | ''>('');
-  const [date, setDate] = useState(toIsoDate(new Date()));
+  const [date, setDate] = useState(toIsoDate(clinicNow()));
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
@@ -48,12 +48,12 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
       setPatientId(a.patientId);
       setReason(a.reasonForVisit ?? '');
       setNotes(a.notes ?? '');
-      setDate(toIsoDate(parseLocalDateTime(a.startTime) ?? new Date()));
+      setDate(toIsoDate(parseLocalDateTime(a.startTime) ?? clinicNow()));
     } else {
       setPatientId(mode.patientId ?? '');
       setReason('');
       setNotes('');
-      const base = mode.date && mode.date >= new Date(new Date().toDateString()) ? mode.date : new Date();
+      const base = mode.date && mode.date >= startOfDay(clinicNow()) ? mode.date : clinicNow();
       setDate(toIsoDate(base));
     }
     patientsApi
@@ -79,7 +79,7 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
       .then((list) => {
         if (cancelled) return;
         setSlots(list);
-        const now = new Date();
+        const now = clinicNow();
         const first = list.find((s) => s.available && (parseLocalDateTime(s.startTime) ?? now) > now);
         setSelectedSlot(first ?? null);
       })
@@ -98,7 +98,7 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
     );
   }, [patients, patientFilter, patientId]);
 
-  const now = new Date();
+  const now = clinicNow();
   const slotState = (s: AvailableSlot): { enabled: boolean; reason: string | null } => {
     const start = parseLocalDateTime(s.startTime);
     if (start && start <= now) return { enabled: false, reason: 'Horario ya transcurrido' };
@@ -211,7 +211,7 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
             </Field>
 
             <Field label="Fecha de la cita" htmlFor="ap-date" required>
-              <input id="ap-date" type="date" min={toIsoDate(new Date())} value={date} onChange={(e) => setDate(e.target.value)} />
+              <input id="ap-date" type="date" min={toIsoDate(clinicNow())} value={date} onChange={(e) => setDate(e.target.value)} />
             </Field>
 
             <Field label="Motivo de la consulta" htmlFor="ap-reason" required>

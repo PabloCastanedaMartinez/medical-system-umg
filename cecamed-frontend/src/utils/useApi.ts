@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { errorMessage } from '../api/client';
+import { clinicNow } from './format';
 
 interface ApiState<T> {
   data: T | null;
@@ -59,11 +60,11 @@ export function useDebounced<T>(value: T, delayMs = 350): T {
   return debounced;
 }
 
-/** Fecha actual que se actualiza cada `intervalMs` (reloj de la barra superior, tiempos de espera). */
+/** Hora actual de la clínica, actualizada cada `intervalMs` (reloj de la barra superior, tiempos de espera). */
 export function useNow(intervalMs = 1000): Date {
-  const [now, setNow] = useState(() => new Date());
+  const [now, setNow] = useState(() => clinicNow());
   useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), intervalMs);
+    const id = window.setInterval(() => setNow(clinicNow()), intervalMs);
     return () => window.clearInterval(id);
   }, [intervalMs]);
   return now;

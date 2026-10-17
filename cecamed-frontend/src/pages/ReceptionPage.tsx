@@ -9,18 +9,19 @@ import { StatCard } from '../components/StatCard';
 import { AppointmentStatusBadge } from '../components/StatusBadge';
 import { EmptyState, ErrorBanner, PageHeader, Spinner } from '../components/Common';
 import { useApi, useNow } from '../utils/useApi';
-import { endOfDay, formatElapsed, formatLongDate, formatTime, parseLocalDateTime, startOfDay, toIsoDateTime } from '../utils/format';
+import { endOfDay, formatElapsed, formatLongDate, formatTime, parseLocalDateTime, startOfDay, toIsoDate, toIsoDateTime } from '../utils/format';
 import { APPOINTMENT_STATUS, isClosedForReception } from '../utils/labels';
 import { AppointmentFormModal, type AppointmentFormMode } from './AppointmentFormModal';
 
 const FILTERS: AppointmentStatus[] = ['PROGRAMADA', 'CONFIRMADA', 'EN_SALA', 'ATENDIDA', 'NO_ASISTIO', 'CANCELADA'];
 
 /**
- * Hora de llegada a sala: el backend actualiza `updatedAt` al hacer check-in (estado EN_SALA),
- * así el tiempo de espera es el mismo en todos los equipos de recepción.
+ * Hora de llegada a sala: la registra el backend en `checkedInAt` al pasar la cita a EN_SALA.
+ * No se usa `updatedAt`, porque cualquier otro cambio posterior de la cita lo modifica.
+ * Si el backend aún no envía la hora de llegada, se devuelve null y no se calcula la espera.
  */
-function arrivalTime(a: Appointment): Date {
-  return parseLocalDateTime(a.updatedAt) ?? parseLocalDateTime(a.startTime) ?? new Date();
+function arrivalTime(a: Appointment): Date | null {
+  return parseLocalDateTime(a.checkedInAt);
 }
 
 /** Equivalente de reception.fxml / ReceptionController. */
@@ -34,10 +35,13 @@ export function ReceptionPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<AppointmentFormMode>({ kind: 'create' });
 
-  const today = useMemo(() => new Date(), []);
+  // "Hoy" se recalcula con el reloj de la clínica: después de medianoche la pantalla
+  // pasa sola al nuevo día y el refresco automático consulta las citas de ese día.
+  const todayKey = toIsoDate(now);
+  const today = useMemo(() => startOfDay(now), [todayKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const { data, loading, error, reload } = useApi(
     (signal) => appointmentsApi.list(toIsoDateTime(startOfDay(today)), toIsoDateTime(endOfDay(today)), null, signal),
-    [],
+    [todayKey],
   );
   const all = data ?? [];
 
@@ -67,7 +71,11 @@ export function ReceptionPage() {
   }, [all, search, statusFilter]);
 
   const waiting = useMemo(
-    () => all.filter((a) => a.status === 'EN_SALA').sort((a, b) => arrivalTime(a).getTime() - arrivalTime(b).getTime()),
+    () =>
+      all
+        .filter((a) => a.status === 'EN_SALA')
+        // Primero quien llegó antes; sin hora de llegada registrada, al final.
+        .sort((a, b) => (arrivalTime(a)?.getTime() ?? Infinity) - (arrivalTime(b)?.getTime() ?? Infinity)),
     [all],
   );
 
@@ -116,7 +124,7 @@ export function ReceptionPage() {
             <button
               className="btn btn-primary"
               onClick={() => {
-                setFormMode({ kind: 'create', date: new Date() });
+                setFormMode({ kind: 'create', date: now });
                 setFormOpen(true);
               }}
             >
@@ -252,17 +260,17 @@ export function ReceptionPage() {
             <ul className="waiting-list">
               {waiting.map((a) => {
                 const arrival = arrivalTime(a);
-                const minutes = (now.getTime() - arrival.getTime()) / 60000;
+                const minutes = arrival ? (now.getTime() - arrival.getTime()) / 60000 : 0;
                 return (
                   <li key={a.id} className={minutes >= 30 ? 'long-wait' : minutes >= 15 ? 'mid-wait' : ''}>
                     <div className="waiting-info">
                       <strong>{a.patientFullName}</strong>
                       <span className="muted small">
-                        Cita {formatTime(a.startTime)} · Llegada {formatTime(arrival)}
+                        Cita {formatTime(a.startTime)} · Llegada {arrival ? formatTime(arrival) : 'sin registrar'}
                       </span>
                     </div>
                     <span className="waiting-elapsed mono" aria-label="Tiempo de espera">
-                      {formatElapsed(arrival, now)}
+                      {arrival ? formatElapsed(arrival, now) : '--'}
                     </span>
                     <button
                       className="btn btn-primary btn-xs"

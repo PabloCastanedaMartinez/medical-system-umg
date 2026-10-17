@@ -13,6 +13,7 @@ import { useApi } from '../utils/useApi';
 import {
   addDays,
   addMonths,
+  clinicNow,
   endOfDay,
   formatDate,
   formatDayMonth,
@@ -59,7 +60,7 @@ export function AppointmentsPage() {
   const [params, setParams] = useSearchParams();
 
   const [mode, setMode] = useState<ViewMode>('DAY');
-  const [current, setCurrent] = useState(() => new Date());
+  const [current, setCurrent] = useState(() => clinicNow());
   const [statusFilter, setStatusFilter] = useState<AppointmentStatus | ''>('');
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<AppointmentFormMode>({ kind: 'create' });
@@ -73,7 +74,7 @@ export function AppointmentsPage() {
 
   useEffect(() => {
     if (params.get('nueva') === '1') {
-      setFormMode({ kind: 'create', date: new Date() });
+      setFormMode({ kind: 'create', date: clinicNow() });
       setFormOpen(true);
       params.delete('nueva');
       setParams(params, { replace: true });
@@ -162,7 +163,7 @@ export function AppointmentsPage() {
             <button className="btn btn-ghost btn-sm" onClick={() => shift(-1)} aria-label="Anterior">
               <ChevronLeft size={16} />
             </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setCurrent(new Date())}>
+            <button className="btn btn-ghost btn-sm" onClick={() => setCurrent(clinicNow())}>
               Hoy
             </button>
             <button className="btn btn-ghost btn-sm" onClick={() => shift(1)} aria-label="Siguiente">
@@ -174,7 +175,7 @@ export function AppointmentsPage() {
           <input
             type="date"
             value={toIsoDate(current)}
-            onChange={(e) => e.target.value && setCurrent(parseLocalDateTime(e.target.value) ?? new Date())}
+            onChange={(e) => e.target.value && setCurrent(parseLocalDateTime(e.target.value) ?? clinicNow())}
             aria-label="Ir a fecha"
           />
           <div className="segmented" role="tablist" aria-label="Vista">

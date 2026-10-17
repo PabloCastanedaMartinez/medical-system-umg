@@ -91,6 +91,8 @@ export interface Appointment {
   googleSyncStatus: GoogleSyncStatus | null;
   googleHtmlLink: string | null;
   googleLastSyncedAt: string | null;
+  /** Hora de llegada a sala (check-in). La fija el backend al pasar la cita a EN_SALA. */
+  checkedInAt?: string | null;
   createdAt: string | null;
   updatedAt: string | null;
 }

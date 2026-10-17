@@ -5,10 +5,12 @@
  * los endpoints de negocio. Los datos son de ejemplo y se reinician al recargar la página.
  * No se incluye en la compilación normal (`npm run build`).
  */
-const pad = (n) => String(n).padStart(2, '0');
-const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-const parse = (s) => new Date(s);
-const now = () => new Date();
+import { clinicNow, parseLocalDateTime, toIsoDateTime } from '../utils/format';
+
+// Igual que el backend: instantes con offset de la clínica ("2026-10-15T09:30:00-06:00").
+const iso = (d) => toIsoDateTime(d);
+const parse = (s) => parseLocalDateTime(s);
+const now = () => clinicNow();
 
 const USERS = {
   medico: { password: 'medico123', fullName: 'Dr. Angel Anibal Mazariegos Pinales', role: 'MEDICO', roleDisplayName: 'Médico Especialista' },
@@ -49,13 +51,14 @@ const consultations = [{
 }];
 const documents = [{ id: 1, patientId: 2, consultationId: null, fileName: 'a1.pdf', originalFileName: 'Hemograma_marzo.pdf', fileType: 'application/pdf', documentType: 'ESTUDIO_LABORATORIO', fileSizeBytes: 245000, description: 'Hemograma completo', createdAt: iso(now()) }];
 
-const today = new Date(); today.setHours(0, 0, 0, 0);
+const today = clinicNow(); today.setHours(0, 0, 0, 0);
 const at = (h, m, dayOffset = 0) => { const d = new Date(today); d.setDate(d.getDate() + dayOffset); d.setHours(h, m, 0, 0); return d; };
 const mkAppt = (id, pid, start, status, reason) => {
   const p = patients.find((x) => x.id === pid);
   return { id, patientId: pid, patientFullName: p.fullName, patientPhone: p.phone, startTime: iso(start), endTime: iso(new Date(start.getTime() + 30 * 6e4)),
     status, reasonForVisit: reason, cancellationReason: null, notes: null, googleEventId: null, googleSyncStatus: 'NOT_APPLICABLE',
-    googleHtmlLink: null, googleLastSyncedAt: null, createdAt: iso(now()), updatedAt: status === 'EN_SALA' ? iso(new Date(now().getTime() - 17 * 6e4)) : iso(now()) };
+    googleHtmlLink: null, googleLastSyncedAt: null, checkedInAt: status === 'EN_SALA' ? iso(new Date(now().getTime() - 17 * 6e4)) : null,
+    createdAt: iso(now()), updatedAt: iso(now()) };
 };
 const appointments = [
   mkAppt(1, 1, at(8, 0), 'ATENDIDA', 'Chequeo general'),
@@ -93,6 +96,12 @@ function slotsFor(dateStr) {
   return out;
 }
 
+/** Conflicto de horario con otra cita activa (el contrato pide 409). */
+function overlaps(start, end, ignoreId = null) {
+  const s = parse(start); const e = parse(end);
+  return appointments.some((a) => a.id !== ignoreId && !['CANCELADA', 'NO_ASISTIO'].includes(a.status) && parse(a.startTime) < e && parse(a.endTime) > s);
+}
+
 async function api(req, res, url) {
   const p = url.pathname;
   const m = req.method;
@@ -107,6 +116,8 @@ async function api(req, res, url) {
     const s = sessionFromToken(`mock-${body.username.trim().toLowerCase()}`);
     return send(res, 200, { ...s, accessToken: `mock-${s.username}` });
   }
+  // Igual que en cecamed-api, /system/info es público.
+  if (p === '/api/system/info') return send(res, 200, { name: 'cecamed-backend (API simulada)', version: '0.1.0-SNAPSHOT', apiVersion: 'v1', googleCalendarEnabled: false });
   if (!user) return err(res, 401, 'La sesión no está iniciada o ha expirado', p);
   const medicoOnly = /^\/api\/(patients\/\d+\/(medical-record|consultations|documents)|consultations|documents)/.test(p);
   if (medicoOnly && user.role !== 'MEDICO') return err(res, 403, `El perfil ${user.roleDisplayName} no tiene permisos para esta operación`, p);
@@ -114,7 +125,6 @@ async function api(req, res, url) {
   let mm;
   if (p === '/api/auth/me') return send(res, 200, user);
   if (p === '/api/auth/logout') return send(res, 204);
-  if (p === '/api/system/info') return send(res, 200, { name: 'cecamed-backend (API simulada)', version: '0.1.0-SNAPSHOT', apiVersion: 'v1', googleCalendarEnabled: false });
   if ((mm = p.match(/^\/api\/documents\/(\d+)\/file$/))) { res.r = new Response(new Blob(['%PDF-1.4\n% Documento de ejemplo (API simulada)\n'], { type: 'application/pdf' }), { status: 200 }); return; }
   if (p === '/api/dashboard/summary') {
     const t = appointments.filter((a) => parse(a.startTime).toDateString() === today.toDateString());
@@ -159,14 +169,18 @@ async function api(req, res, url) {
   }
   if (p === '/api/appointments' && m === 'POST') {
     if (parse(body.startTime) < now()) return err(res, 400, 'La hora de inicio debe ser en el presente o futuro', p);
+    if (overlaps(body.startTime, body.endTime)) return err(res, 409, 'El horario seleccionado ya está ocupado por otra cita', p);
     const a = mkAppt(++seq, body.patientId, parse(body.startTime), 'PROGRAMADA', body.reasonForVisit); appointments.push(a); return send(res, 201, a);
   }
   if ((mm = p.match(/^\/api\/appointments\/(\d+)\/(reschedule|cancel|complete|status)$/))) {
     const a = appointments.find((x) => x.id === +mm[1]);
+    if (!a) return err(res, 404, `Cita no encontrada con id: '${mm[1]}'`, p);
+    if (mm[2] === 'reschedule' && overlaps(body.newStartTime, body.newEndTime, a.id)) return err(res, 409, 'El horario seleccionado ya está ocupado por otra cita', p);
     if (mm[2] === 'reschedule') Object.assign(a, { startTime: body.newStartTime, endTime: body.newEndTime, status: 'REPROGRAMADA' });
     if (mm[2] === 'cancel') Object.assign(a, { status: 'CANCELADA', cancellationReason: body.reason });
     if (mm[2] === 'complete') a.status = 'ATENDIDA';
     if (mm[2] === 'status') a.status = body.status;
+    if (mm[2] === 'status' && body.status === 'EN_SALA') a.checkedInAt = iso(now());
     a.updatedAt = iso(now());
     return send(res, 200, a);
   }

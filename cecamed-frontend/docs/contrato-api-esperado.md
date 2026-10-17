@@ -7,7 +7,7 @@ Todas las rutas son relativas a **`/api/v1`**. Los errores siguen el formato *Pr
 ## Convenciones
 
 - **Autenticación:** `Authorization: Bearer <token>` en todas las rutas salvo `POST /auth/login` y `GET /system/info`.
-- **Fechas:** `YYYY-MM-DD` para fechas de calendario. Para fecha y hora, el frontend acepta tanto `2026-10-15T09:30:00` (hora local de la clínica) como instantes ISO 8601 con zona (`2026-10-15T15:30:00Z`). Al **enviar** fecha y hora, hoy manda hora local sin zona; si el backend prefiere instantes con zona, se ajusta en un solo lugar (`toIsoDateTime` en `utils/format.ts`).
+- **Fechas:** `YYYY-MM-DD` para fechas de calendario. Fecha y hora como instantes ISO 8601 con offset, igual que `docs/api-contract.md`. El frontend **envía** la hora de la clínica con su offset (`2026-10-15T09:30:00-06:00`), también en los filtros `start`/`end` y en los bloqueos de agenda. Al **recibir**, acepta cualquier offset (`…Z`, `…-06:00`) y **muestra** siempre la hora de `America/Guatemala`, sin importar la zona del equipo. Toda la conversión está en `utils/format.ts`.
 - **Enumeraciones:** se usan los mismos valores del CECAMed original (`PROGRAMADA`, `EN_SALA`, `O_POSITIVO`, `MEDICO`, …).
 - **Listas:** hoy se esperan arreglos simples. Si se pagina, avisar para adaptar.
 
@@ -45,6 +45,8 @@ Restricción por rol: el perfil **RECEPCION** no puede usar expediente, consulta
 
 ## Expediente clínico (solo MEDICO)
 
+El frontend carga cada sección del expediente por separado: paciente, antecedentes, consultas, historial de citas y documentos. Si una ruta todavía no existe, solo esa pestaña muestra el error, así que el expediente se puede implementar antes que la agenda.
+
 | Método y ruta | Entrada | Respuesta |
 | --- | --- | --- |
 | `GET /patients/{id}/medical-record` | — | `MedicalRecord` |
@@ -77,11 +79,11 @@ Restricción por rol: el perfil **RECEPCION** no puede usar expediente, consulta
 | `PUT /appointments/{id}/reschedule` | `{ newStartTime, newEndTime, reason }` | `Appointment` |
 | `POST /appointments/{id}/cancel` | `{ reason }` | `Appointment` |
 | `POST /appointments/{id}/complete` | — | `Appointment` |
-| `PATCH /appointments/{id}/status` | `{ status: CONFIRMADA \| EN_SALA \| ATENDIDA \| NO_ASISTIO }` | `Appointment` |
+| `PATCH /appointments/{id}/status` | `{ status: CONFIRMADA \| EN_SALA \| ATENDIDA \| NO_ASISTIO }` | `Appointment`. Al pasar a `EN_SALA`, el backend registra `checkedInAt` |
 
-`Appointment`: `id`, `patientId`, `patientFullName`, `patientPhone`, `startTime`, `endTime`, `status`, `reasonForVisit`, `cancellationReason`, `notes`, `googleSyncStatus`, `createdAt`, `updatedAt`.
+`Appointment`: `id`, `patientId`, `patientFullName`, `patientPhone`, `startTime`, `endTime`, `status`, `reasonForVisit`, `cancellationReason`, `notes`, `googleSyncStatus`, `checkedInAt`, `createdAt`, `updatedAt`.
 
-La sala de espera usa `updatedAt` como hora de llegada cuando el estado es `EN_SALA`. Si el backend guarda un campo específico (por ejemplo `checkedInAt`), conviene exponerlo y se cambia en `ReceptionPage.tsx`.
+`checkedInAt` es la hora de llegada a sala (instante con offset). La sala de espera calcula el tiempo de espera con ese campo y no con `updatedAt`, porque cualquier otro cambio de la cita modifica `updatedAt`. Si llega `null`, la recepción muestra "Llegada sin registrar" y no cuenta tiempo.
 
 ## Horarios y bloqueos
 

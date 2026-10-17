@@ -10,6 +10,7 @@ import { EmptyState, ErrorBanner, Field, PageHeader, Spinner } from '../componen
 import { useApi } from '../utils/useApi';
 import {
   blankToNull,
+  clinicNow,
   formatDate,
   formatDateTime,
   formatTime,
@@ -31,13 +32,6 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'appointments', label: 'Historial de citas' },
   { id: 'documents', label: 'Documentos' },
 ];
-
-interface RecordData {
-  patient: Patient;
-  record: MedicalRecord;
-  consultations: Consultation[];
-  appointments: Appointment[];
-}
 
 type RecordForm = Record<
   | 'allergies'
@@ -102,36 +96,36 @@ export function MedicalRecordPage() {
   const [recordForm, setRecordForm] = useState<RecordForm>(toRecordForm(null));
   const [savingRecord, setSavingRecord] = useState(false);
 
-  const { data, loading, error, reload, setData } = useApi<RecordData>(
-    async () => {
-      const [patient, record, consultations, appointments] = await Promise.all([
-        patientsApi.get(patientId),
-        medicalRecordApi.get(patientId),
-        medicalRecordApi.consultations(patientId),
-        patientsApi.appointments(patientId),
-      ]);
-      return { patient, record, consultations, appointments };
-    },
-    [patientId],
-    Number.isFinite(patientId),
-  );
+  // Cada sección se carga por separado: si un endpoint todavía no existe o falla (por ejemplo,
+  // el historial de citas mientras la agenda no está implementada), solo esa pestaña muestra
+  // el error y el resto del expediente funciona.
+  const validId = Number.isFinite(patientId);
+  const patientQuery = useApi<Patient>(() => patientsApi.get(patientId), [patientId], validId);
+  const recordQuery = useApi<MedicalRecord>(() => medicalRecordApi.get(patientId), [patientId], validId);
+  const consultationsQuery = useApi<Consultation[]>(() => medicalRecordApi.consultations(patientId), [patientId], validId);
+  const appointmentsQuery = useApi<Appointment[]>(() => patientsApi.appointments(patientId), [patientId], validId);
   const { data: patientOptions } = useApi(() => patientsApi.list('', 'ACTIVE'), []);
 
+  const record = recordQuery.data;
+  const consultations = consultationsQuery.data;
+
   useEffect(() => {
-    if (!data) return;
-    setRecordForm(toRecordForm(data.record));
-    setSelectedConsultationId(data.consultations[0]?.id ?? null);
-  }, [data?.record, data?.consultations]); // eslint-disable-line react-hooks/exhaustive-deps
+    setRecordForm(toRecordForm(record));
+  }, [record]);
+
+  useEffect(() => {
+    setSelectedConsultationId(consultations?.[0]?.id ?? null);
+  }, [consultations]);
 
   const dirty = useMemo(
-    () => data != null && JSON.stringify(recordForm) !== JSON.stringify(toRecordForm(data.record)),
-    [recordForm, data],
+    () => record != null && JSON.stringify(recordForm) !== JSON.stringify(toRecordForm(record)),
+    [recordForm, record],
   );
 
   const setField = (key: keyof RecordForm, value: string) => setRecordForm((f) => ({ ...f, [key]: value }));
 
   const saveRecord = async () => {
-    if (!data) return;
+    if (!record) return;
     const water = recordForm.waterGlassesPerDay.trim();
     const meals = recordForm.mealsPerDay.trim();
     const validCount = (v: string) => v === '' || /^\d+$/.test(v);
@@ -143,9 +137,9 @@ export function MedicalRecordPage() {
       return;
     }
     const body: MedicalRecord = {
-      ...data.record,
+      ...record,
       patientId,
-      recordNumber: data.record.recordNumber ?? data.patient.medicalRecordNumber ?? '',
+      recordNumber: record.recordNumber ?? patientQuery.data?.medicalRecordNumber ?? '',
       allergies: recordForm.allergies.trim(),
       currentMedications: recordForm.currentMedications.trim(),
       pathologicalHistory: recordForm.pathologicalHistory.trim(),
@@ -161,7 +155,7 @@ export function MedicalRecordPage() {
     setSavingRecord(true);
     try {
       const saved = await medicalRecordApi.update(patientId, body);
-      setData((prev) => (prev ? { ...prev, record: saved } : prev));
+      recordQuery.setData(saved);
       toast.success('Expediente actualizado', 'Los antecedentes clínicos fueron guardados satisfactoriamente');
     } catch (err) {
       toast.error('Error', errorMessage(err, 'No fue posible actualizar los antecedentes del expediente'));
@@ -174,9 +168,20 @@ export function MedicalRecordPage() {
     return <EmptyState icon={ClipboardList} message="Seleccione un paciente válido" />;
   }
 
-  const patient = data?.patient;
-  const allergies = data?.record.allergies?.trim();
-  const selectedConsultation = data?.consultations.find((c) => c.id === selectedConsultationId) ?? null;
+  const patient = patientQuery.data;
+  const allergies = record?.allergies?.trim();
+  const selectedConsultation = consultations?.find((c) => c.id === selectedConsultationId) ?? null;
+
+  /** Estado de carga o error de una sección; null cuando ya tiene datos. */
+  const sectionStatus = (query: { data: unknown; loading: boolean; error: string | null; reload: () => void }) => {
+    if (query.data != null) return null;
+    if (query.error) return <ErrorBanner message={query.error} onRetry={query.reload} />;
+    return (
+      <div className="center-pad">
+        <Spinner />
+      </div>
+    );
+  };
 
   const textArea = (key: keyof RecordForm, label: string, placeholder: string, rows = 3) => (
     <Field label={label} htmlFor={`rec-${key}`}>
@@ -187,7 +192,7 @@ export function MedicalRecordPage() {
   const saveBar = (
     <div className="form-actions">
       {dirty && <span className="muted small">Hay cambios sin guardar</span>}
-      <button className="btn btn-primary" onClick={saveRecord} disabled={savingRecord || !data}>
+      <button className="btn btn-primary" onClick={saveRecord} disabled={savingRecord || !record}>
         {savingRecord ? <Spinner size={16} /> : <Save size={16} aria-hidden />} Guardar antecedentes
       </button>
     </div>
@@ -220,7 +225,7 @@ export function MedicalRecordPage() {
                 <strong>Alergias:</strong> {allergies || 'Ninguna reportada'}
               </div>
             </>
-          ) : loading ? (
+          ) : patientQuery.loading ? (
             <Spinner />
           ) : null}
         </div>
@@ -247,7 +252,7 @@ export function MedicalRecordPage() {
         </div>
       </section>
 
-      {error && <ErrorBanner message={error} onRetry={reload} />}
+      {patientQuery.error && <ErrorBanner message={patientQuery.error} onRetry={patientQuery.reload} />}
 
       <div className="tabs" role="tablist" aria-label="Secciones del expediente">
         {TABS.map((t) => (
@@ -258,11 +263,13 @@ export function MedicalRecordPage() {
       </div>
 
       <section className="card tab-panel" role="tabpanel">
-        {!data && loading ? (
-          <div className="center-pad">
-            <Spinner />
-          </div>
-        ) : !data ? null : tab === 'pathological' ? (
+        {(tab === 'pathological' || tab === 'nonPathological') && sectionStatus(recordQuery) ? (
+          sectionStatus(recordQuery)
+        ) : tab === 'consultations' && sectionStatus(consultationsQuery) ? (
+          sectionStatus(consultationsQuery)
+        ) : tab === 'appointments' && sectionStatus(appointmentsQuery) ? (
+          sectionStatus(appointmentsQuery)
+        ) : tab === 'pathological' ? (
           <>
             <div className="form-grid">
               {textArea('allergies', 'Alérgicos', "Medicamentos, alimentos y otras alergias, o 'Ninguna conocida'")}
@@ -291,7 +298,7 @@ export function MedicalRecordPage() {
           </>
         ) : tab === 'consultations' ? (
           <ConsultationsTab
-            consultations={data.consultations}
+            consultations={consultations ?? []}
             selected={selectedConsultation}
             onSelect={setSelectedConsultationId}
             onNew={() => setTab('newConsultation')}
@@ -300,13 +307,13 @@ export function MedicalRecordPage() {
           <NewConsultationTab
             patientId={patientId}
             onCreated={(created) => {
-              setData((prev) => (prev ? { ...prev, consultations: [created, ...prev.consultations] } : prev));
+              consultationsQuery.setData((prev) => [created, ...(prev ?? [])]);
               setSelectedConsultationId(created.id);
               setTab('consultations');
             }}
           />
         ) : tab === 'appointments' ? (
-          <AppointmentsHistory appointments={data.appointments} />
+          <AppointmentsHistory appointments={appointmentsQuery.data ?? []} />
         ) : (
           <DocumentsTab patientId={patientId} />
         )}
@@ -442,7 +449,7 @@ const EMPTY_CONSULTATION = {
 
 function NewConsultationTab({ patientId, onCreated }: { patientId: number; onCreated: (c: Consultation) => void }) {
   const toast = useToast();
-  const [form, setForm] = useState({ ...EMPTY_CONSULTATION, date: toIsoDate(new Date()) });
+  const [form, setForm] = useState({ ...EMPTY_CONSULTATION, date: toIsoDate(clinicNow()) });
   const [saving, setSaving] = useState(false);
   const set = (key: keyof typeof EMPTY_CONSULTATION, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -458,7 +465,7 @@ function NewConsultationTab({ patientId, onCreated }: { patientId: number; onCre
       document.getElementById('nc-diagnosis')?.focus();
       return;
     }
-    const now = new Date();
+    const now = clinicNow();
     const [y, m, d] = (form.date || toIsoDate(now)).split('-').map(Number);
     const consultationDate = new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds());
 
@@ -488,7 +495,7 @@ function NewConsultationTab({ patientId, onCreated }: { patientId: number; onCre
     try {
       const created = await medicalRecordApi.createConsultation(body);
       toast.success('Consulta guardada', 'La consulta médica fue registrada exitosamente');
-      setForm({ ...EMPTY_CONSULTATION, date: toIsoDate(new Date()) });
+      setForm({ ...EMPTY_CONSULTATION, date: toIsoDate(clinicNow()) });
       onCreated(created);
     } catch (err) {
       toast.error('Error', errorMessage(err, 'No se pudo guardar la consulta médica'));
@@ -509,7 +516,7 @@ function NewConsultationTab({ patientId, onCreated }: { patientId: number; onCre
         <legend>Datos de la consulta</legend>
         <div className="form-grid">
           <Field label="Fecha de la consulta" htmlFor="nc-date" required>
-            <input id="nc-date" type="date" max={toIsoDate(new Date())} value={form.date} onChange={(e) => set('date', e.target.value)} />
+            <input id="nc-date" type="date" max={toIsoDate(clinicNow())} value={form.date} onChange={(e) => set('date', e.target.value)} />
           </Field>
           <Field label="Motivo de la consulta" htmlFor="nc-reason" required>
             <input id="nc-reason" maxLength={255} placeholder="ej. Control rutinario de hipertensión, fiebre de 3 días..." value={form.reason} onChange={(e) => set('reason', e.target.value)} />

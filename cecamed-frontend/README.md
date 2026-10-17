@@ -92,6 +92,6 @@ docs/
 
 - **Errores:** el cliente lanza `ApiError` con `status`, `code` y un mensaje tomado de `detail` (o de `errors[].message` en validaciones). Las decisiones se basan en `code`, como pide el contrato del backend.
 - **Autenticación:** el token del login se envía como `Authorization: Bearer` y se guarda solo en la pestaña (`sessionStorage`). Ante un 401 se cierra la sesión y se vuelve a la pantalla de acceso.
-- **Fechas:** usar las funciones de `utils/format.ts`. Aceptan `YYYY-MM-DD`, fecha-hora local e instantes ISO 8601 con zona.
+- **Fechas:** usar las funciones de `utils/format.ts`. La interfaz muestra y envía la hora de la clínica (`America/Guatemala`) como instantes ISO 8601 con offset, sin importar la zona del equipo. Para "ahora" se usa `clinicNow()`, no `new Date()`.
 - **Roles:** el expediente clínico, las consultas y los documentos son solo para el perfil médico. El backend debe validarlo también.
 - **Si cambia un DTO del backend**, actualizar `src/api/types.ts` y, si aplica, `src/mocks/mockApi.ts`.
