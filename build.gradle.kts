@@ -22,6 +22,8 @@ subprojects {
     dependencies {
         "implementation"(platform(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES))
         "testImplementation"("org.junit.jupiter:junit-jupiter")
+        "testImplementation"("org.assertj:assertj-core")
+        "testImplementation"("org.mockito:mockito-junit-jupiter")
         "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
     }
 

@@ -58,29 +58,28 @@ comunicará mediante los contratos de aplicación.
 
 ## Mapa del CECAMed existente
 
-| Funcionalidad | Referencia original | Destino previsto |
-| --- | --- | --- |
-| Identidad y acceso | Sesión y autenticación en `cecamed-ui` | `identity` |
-| Pacientes | `PatientService`, `PatientIdentity`, repositorios y restricciones | `patient` |
-| Expedientes y consultas | `MedicalRecordService`, `MedicalConsultationService` | `clinical` |
-| Citas, horarios y bloqueos | `AppointmentService`, `DoctorScheduleService` | `scheduling` |
-| Recepción y sala de espera | Controladores de escritorio y estados de citas | `reception`, coordinado con `scheduling` |
-| Adjuntos | `PatientDocumentService` y almacenamiento local | `document` |
-| Inventario y kardex | `InventoryService` | `inventory` |
-| Google Calendar | `cecamed-calendar-integration` | Adaptadores de `scheduling` |
-
-Estos destinos son una guía para las siguientes entregas; todavía no existen
-endpoints ni implementaciones de estas funcionalidades. Antes de migrar cada
-servicio se revisarán sus reglas y pruebas, sin trasladar dependencias de JavaFX.
+| Funcionalidad | Referencia original | Destino previsto | Estado |
+| --- | --- | --- | --- |
+| Identidad y acceso | Sesión y autenticación en `cecamed-ui` | `identity` | Implementado (Fase 2) |
+| Pacientes | `PatientService`, `PatientIdentity`, repositorios y restricciones | `patient` | Pendiente |
+| Expedientes y consultas | `MedicalRecordService`, `MedicalConsultationService` | `clinical` | Pendiente |
+| Citas, horarios y bloqueos | `AppointmentService`, `DoctorScheduleService` | `scheduling` | Pendiente |
+| Recepción y sala de espera | Controladores de escritorio y estados de citas | `reception`, coordinado con `scheduling` | Pendiente |
+| Adjuntos | `PatientDocumentService` y almacenamiento local | `document` | Pendiente |
+| Inventario y kardex | `InventoryService` | `inventory` | Pendiente |
+| Google Calendar | `cecamed-calendar-integration` | Adaptadores de `scheduling` | Pendiente |
 
 ## Decisiones transversales
 
 - **Contrato:** JSON, rutas `/api/v1`, OpenAPI generado y errores Problem Details.
   Los DTO permiten evolucionar el esquema sin exponer la persistencia.
-- **Seguridad:** servicio sin sesión HTTP, sin login de formulario y sin Basic.
-  Solo se permite información técnica y salud; la documentación es pública en
-  local. Las demás solicitudes se rechazan. La autenticación y autorización por
-  roles se definirán en la etapa de identidad. No se migran las cuentas del escritorio.
+- **Seguridad (Fase 2 implementada):**
+  - Autenticación Bearer stateless con token JWT HS256 (15 min) y refresh tokens opacos (7 días) rotativos persistidos mediante hash SHA-256.
+  - Revocación de tokens en logout y detección de reutilización indebida de refresh tokens revocados (con invalidación de todas las sesiones del usuario).
+  - Autorización por roles (`MEDICO`, `RECEPCION`, `ADMIN`) en rutas HTTP y `@PreAuthorize`. Principio de mínimo privilegio y denegación por defecto (`denyAll()`).
+  - Protección contra fuerza bruta (bloqueo temporal tras 5 intentos fallidos) con mensajes genéricos para evitar enumeración.
+  - Auditoría de seguridad persistida en base de datos de manera aislada (`REQUIRES_NEW`), sin registrar secretos ni contraseñas.
+  - Sin sesiones HTTP, sin cookies y CSRF deshabilitado justificadamente.
 - **CORS:** lista explícita de orígenes por entorno, sin credenciales de cookies.
   CSRF está desactivado bajo esta condición; si se adopta sesión/cookies, la
   configuración se revisará junto con el mecanismo de autenticación.

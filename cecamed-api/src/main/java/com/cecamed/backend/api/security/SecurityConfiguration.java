@@ -1,8 +1,10 @@
 package com.cecamed.backend.api.security;
 
 import com.cecamed.backend.api.config.CorsProperties;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.net.URI;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -11,22 +13,26 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import tools.jackson.databind.json.JsonMapper;
 
 @Configuration(proxyBeanMethods = false)
+@EnableMethodSecurity
 public class SecurityConfiguration {
 
     @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             JsonMapper jsonMapper,
+            JwtAuthenticationFilter jwtAuthenticationFilter,
             @Value("${cecamed.api-docs-public:false}") boolean publicDocs) throws Exception {
         return http
                 .cors(cors -> {})
@@ -37,23 +43,36 @@ public class SecurityConfiguration {
                 .logout(AbstractHttpConfigurer::disable)
                 .requestCache(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((request, response, exception) -> writeProblem(
-                                response, jsonMapper, HttpStatus.UNAUTHORIZED,
+                                request, response, jsonMapper, HttpStatus.UNAUTHORIZED,
                                 "AUTHENTICATION_REQUIRED", "Se requiere autenticación."))
                         .accessDeniedHandler((request, response, exception) -> writeProblem(
-                                response, jsonMapper, HttpStatus.FORBIDDEN,
+                                request, response, jsonMapper, HttpStatus.FORBIDDEN,
                                 "ACCESS_DENIED", "No tienes permiso para realizar esta operación.")))
                 .authorizeHttpRequests(authorize -> {
                     authorize.requestMatchers(HttpMethod.GET,
                             "/api/v1/system/info", "/actuator/health",
                             "/actuator/health/liveness", "/actuator/health/readiness").permitAll();
+                    authorize.requestMatchers(HttpMethod.POST,
+                            "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll();
                     if (publicDocs) {
                         authorize.requestMatchers(HttpMethod.GET,
                                 "/v3/api-docs", "/v3/api-docs/**",
                                 "/swagger-ui.html", "/swagger-ui/**").permitAll();
                     }
-                    // Se sustituirá por reglas de rol al implementar identidad y acceso.
+                    authorize.requestMatchers("/api/v1/auth/me").authenticated();
+                    authorize.requestMatchers("/api/v1/users/**").hasRole("ADMIN");
+                    authorize.requestMatchers(
+                            "/api/v1/patients/**",
+                            "/api/v1/appointments/**",
+                            "/api/v1/medical-records/**",
+                            "/api/v1/consultations/**",
+                            "/api/v1/documents/**",
+                            "/api/v1/schedules/**",
+                            "/api/v1/schedule-blocks/**",
+                            "/api/v1/dashboard/**").hasAnyRole("MEDICO", "RECEPCION");
                     authorize.anyRequest().denyAll();
                 })
                 .build();
@@ -72,10 +91,18 @@ public class SecurityConfiguration {
         return source;
     }
 
-    private static void writeProblem(HttpServletResponse response, JsonMapper mapper,
-            HttpStatus status, String code, String detail) throws IOException {
+    private static void writeProblem(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            JsonMapper mapper,
+            HttpStatus status,
+            String code,
+            String detail) throws IOException {
         var problem = ProblemDetail.forStatusAndDetail(status, detail);
         problem.setProperty("code", code);
+        if (request != null && request.getRequestURI() != null) {
+            problem.setInstance(URI.create(request.getRequestURI()));
+        }
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         mapper.writeValue(response.getOutputStream(), problem);

@@ -75,14 +75,20 @@ Para conectar desde otro equipo, configurar `SERVER_ADDRESS` y el origen CORS.
 La URL local se construye con `DB_HOST`, `DB_PORT` y `DB_NAME`. Si se proporciona
 `DB_URL`, se utiliza esa URL completa en lugar de construirla.
 
-| Recurso | Dirección local |
-| --- | --- |
-| Información de versión | `GET /api/v1/system/info` |
-| Estado del servicio | `GET /actuator/health` |
-| Disponibilidad con base de datos | `GET /actuator/health/readiness` |
-| Estado del proceso | `GET /actuator/health/liveness` |
-| Contrato OpenAPI JSON | `GET /v3/api-docs` |
-| Documentación interactiva | `/swagger-ui/index.html` |
+| Recurso | Método | Dirección local | Acceso |
+| --- | --- | --- | --- |
+| Información de versión | GET | `/api/v1/system/info` | Público |
+| Estado del servicio | GET | `/actuator/health` | Público |
+| Disponibilidad con base de datos | GET | `/actuator/health/readiness` | Público |
+| Estado del proceso | GET | `/actuator/health/liveness` | Público |
+| Contrato OpenAPI JSON | GET | `/v3/api-docs` | Público en perfil local |
+| Documentación interactiva | GET | `/swagger-ui/index.html` | Público en perfil local |
+| Inicio de sesión | POST | `/api/v1/auth/login` | Público |
+| Refresco de tokens | POST | `/api/v1/auth/refresh` | Público |
+| Cierre de sesión | POST | `/api/v1/auth/logout` | Público |
+| Usuario autenticado | GET | `/api/v1/auth/me` | Autenticado (`MEDICO`, `RECEPCION`, `ADMIN`) |
+| Gestión de usuarios | * | `/api/v1/users/**` | Exclusivo `ADMIN` |
+| Rutas de negocio clínico | * | `/api/v1/patients/**`, `/api/v1/appointments/**`, etc. | `MEDICO` o `RECEPCION` |
 
 La documentación interactiva está incluida en el backend para explorar la API.
 Los contratos y ejemplos de integración están en [api-contract.md](docs/api-contract.md).
@@ -105,14 +111,36 @@ curl http://localhost:8080/actuator/health
 | `SERVER_ADDRESS` | Dirección de escucha; en local `127.0.0.1`. |
 | `CORS_ALLOWED_ORIGINS` | Orígenes del frontend separados por comas, sin barra final. |
 | `SPRING_PROFILES_ACTIVE` | `local` o `prod`; predeterminado `local`. |
+| `JWT_SECRET` | Clave HMAC-SHA256 para firma de JWT (mínimo 32 caracteres / 256 bits). Obligatoria en `prod`. |
+| `JWT_ACCESS_TOKEN_EXPIRATION_MINUTES` | Duración del token de acceso; predeterminado `15`. |
+| `JWT_REFRESH_TOKEN_EXPIRATION_DAYS` | Duración del refresh token; predeterminado `7`. |
+| `BRUTE_FORCE_MAX_ATTEMPTS` | Intentos fallidos antes de bloqueo temporal; predeterminado `5`. |
+| `BRUTE_FORCE_LOCKOUT_MINUTES` | Duración del bloqueo temporal en minutos; predeterminado `15`. |
+| `BOOTSTRAP_ADMIN_USERNAME` | Usuario del administrador inicial. Si no se define junto a la contraseña, no se crea. |
+| `BOOTSTRAP_ADMIN_PASSWORD` | Contraseña del administrador inicial (mínimo 12 caracteres). |
+| `BOOTSTRAP_ADMIN_FULL_NAME` | Nombre completo del administrador inicial; predeterminado `Administrador Inicial`. |
 
-El perfil `prod` exige `DB_URL`, `DB_USERNAME` y `DB_PASSWORD` mediante el entorno
+El perfil `prod` exige `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y `JWT_SECRET` mediante el entorno
 o configuración externa; no carga `.env`. Desactiva OpenAPI/Swagger y no
 autoriza orígenes CORS salvo los configurados. Activarlo con `SPRING_PROFILES_ACTIVE=prod`
-sin combinarlo con `local`. Si se define `DB_URL` en local, su base y puerto deben
-coincidir con los de Compose. La autenticación web todavía no está
-implementada: Spring Security bloquea todas las rutas salvo los recursos técnicos
-indicados. No existen usuarios ni contraseñas de aplicación predefinidos.
+sin combinarlo con `local`.
+
+### Modelo de Seguridad (Fase 2: Identidad y Acceso)
+
+- **Autenticación Bearer Stateless**: El cliente envía `Authorization: Bearer <accessToken>` en cada solicitud protegida. No se crean sesiones HTTP ni se utilizan cookies. CSRF está deshabilitado justificadamente bajo este modelo.
+- **Tokens**:
+  - **Access Token**: JWT HMAC-SHA256 de vida corta (15 min) que transporta identidad (`sub`), rol (`role`), nombre completo (`fullName`) e identificador.
+  - **Refresh Token**: Token opaco criptográfico de vida más larga (7 días) cuyo hash SHA-256 se almacena en base de datos.
+  - **Rotación estricta y detección de reuso**: Cada llamada a `/api/v1/auth/refresh` revoca el refresh token actual y emite un nuevo par. Si un refresh token revocado es presentado nuevamente, se detecta un posible robo de sesión, se invalidan de inmediato todas las sesiones activas del usuario y se registra una alerta de seguridad.
+  - **Cierre de sesión (`/api/v1/auth/logout`)**: Revoca el refresh token para impedir su reutilización.
+- **Roles**:
+  - `MEDICO`: Acceso a rutas clínicas y consultas.
+  - `RECEPCION`: Acceso a recepción, citas y expedientes administrativos.
+  - `ADMIN`: Acceso exclusivo a la gestión de cuentas de usuario (`/api/v1/users/**`).
+- **Protección contra fuerza bruta**: Tras 5 intentos fallidos consecutivos de inicio de sesión, la cuenta se bloquea temporalmente por 15 minutos. El mensaje de error es genérico (`Credenciales incorrectas`) para evitar la enumeración de cuentas existentes.
+- **Auditoría de seguridad**: Se registran en base de datos todos los eventos de autenticación (`LOGIN_SUCCESS`, `LOGIN_FAILED`, `TOKEN_REFRESH`, `REFRESH_TOKEN_REUSE_DETECTED`, `LOGOUT`, `ACCOUNT_LOCKED`, `USER_CREATED`, etc.) con timestamp UTC, dirección IP y User-Agent, garantizando la persistencia mediante transacciones independientes (`REQUIRES_NEW`) sin registrar jamás secretos ni contraseñas.
+- **Bootstrap Seguro**: Para crear el primer administrador, configure `BOOTSTRAP_ADMIN_USERNAME` y `BOOTSTRAP_ADMIN_PASSWORD` en el entorno. No existen usuarios predeterminados hardcodeados.
+
 
 ## Compilación y comprobaciones
 

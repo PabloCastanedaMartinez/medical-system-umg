@@ -2,87 +2,133 @@
 
 ## Recursos disponibles
 
-Base local: `http://localhost:8080`. Las rutas funcionales usarán `/api/v1`.
-El backend no necesita tener acceso al repositorio del frontend.
+Base local: `http://localhost:8080`. Las rutas de la API usan el prefijo `/api/v1`.
 
-| Método | Ruta | Estado en esta etapa |
-| --- | --- | --- |
-| GET | `/api/v1/system/info` | Disponible sin autenticación |
-| GET | `/actuator/health` | Disponible sin autenticación |
-| GET | `/actuator/health/liveness` | Disponible sin autenticación |
-| GET | `/actuator/health/readiness` | Disponible sin autenticación; incluye disponibilidad de base |
-| GET | `/v3/api-docs` | Contrato generado; habilitado en perfil local |
-| GET | `/swagger-ui/index.html` | Explorador de API; habilitado en perfil local |
+| Método | Ruta | Acceso | Descripción |
+| --- | --- | --- | --- |
+| GET | `/api/v1/system/info` | Público | Información de versión y estado general |
+| GET | `/actuator/health` | Público | Salud del proceso |
+| GET | `/actuator/health/readiness` | Público | Disponibilidad con base de datos |
+| GET | `/v3/api-docs` | Público (local) | Especificación OpenAPI v3 JSON |
+| GET | `/swagger-ui/index.html` | Público (local) | Interfaz interactiva Swagger UI |
+| POST | `/api/v1/auth/login` | Público | Inicio de sesión (devuelve Access y Refresh tokens) |
+| POST | `/api/v1/auth/refresh` | Público | Rotación de Refresh Token |
+| POST | `/api/v1/auth/logout` | Público / Auth | Cierre de sesión y revocación del Refresh Token |
+| GET | `/api/v1/auth/me` | Autenticado | Perfil y rol del usuario de la sesión |
+| POST | `/api/v1/users` | `ADMIN` | Creación de cuentas de usuario |
+| GET | `/api/v1/users` | `ADMIN` | Listado paginado y filtrado de usuarios |
+| GET | `/api/v1/users/{id}` | `ADMIN` | Detalle completo de un usuario |
+| PUT | `/api/v1/users/{id}` | `ADMIN` | Actualización de nombre y rol |
+| PATCH | `/api/v1/users/{id}/activate` | `ADMIN` | Activación de cuenta |
+| PATCH | `/api/v1/users/{id}/deactivate` | `ADMIN` | Desactivación de cuenta y revocación de sesiones |
+| POST | `/api/v1/users/{id}/reset-password` | `ADMIN` | Restablecimiento de contraseña y revocación de sesiones |
 
-Ejemplo de `GET /api/v1/system/info`:
+---
 
+## Autenticación y Sesión (Bearer Token)
+
+CECAMed utiliza arquitectura stateless con Bearer Token (sin cookies). El cliente envía en cada petición protegida:
+```http
+Authorization: Bearer <accessToken>
+```
+
+### 1. Iniciar sesión (`POST /api/v1/auth/login`)
+**Solicitud:**
 ```json
 {
-  "name": "cecamed-backend",
-  "version": "0.1.0-SNAPSHOT",
-  "apiVersion": "v1"
+  "username": "medico",
+  "password": "Password123!"
 }
 ```
 
-Ejemplo de salud: `{"status":"UP"}`. Un problema de disponibilidad puede devolver
-HTTP 503; no se exponen detalles de conexión a la base de datos.
+**Respuesta exitosa (`200 OK`):**
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "tokenType": "Bearer",
+  "expiresInSeconds": 900,
+  "refreshToken": "4Zk9xV8hQ1...",
+  "username": "medico",
+  "fullName": "Dra. Ana López",
+  "role": "MEDICO",
+  "roleDisplayName": "Médico",
+  "loginTime": "2026-10-17T12:00:00Z"
+}
+```
 
-## CORS y autenticación
+### 2. Refrescar tokens (`POST /api/v1/auth/refresh`)
+**Solicitud:**
+```json
+{
+  "refreshToken": "4Zk9xV8hQ1..."
+}
+```
 
-En local se permiten `http://localhost:5173` y `http://localhost:3000`. Para otro
-origen, establecer `CORS_ALLOWED_ORIGINS` y reiniciar. Se permiten las cabeceras
-`Authorization`, `Content-Type` y `Accept`. No se usan cookies de sesión.
+**Respuesta exitosa (`200 OK`):**
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1Ni...",
+  "tokenType": "Bearer",
+  "expiresInSeconds": 900,
+  "refreshToken": "9jM3pL1aW2..."
+}
+```
+*Nota:* Cada refresco invalida el token anterior y emite uno nuevo (**rotación estricta**). Reutilizar un token previo provoca la invalidación inmediata de todas las sesiones del usuario por detección de anomalías.
 
-Las rutas de negocio todavía no están implementadas y se encuentran bloqueadas
-por la política de seguridad: una llamada anónima recibe HTTP 401. Aún no existe
-un endpoint de login ni un emisor/validador de tokens. El frontend puede comenzar
-probando conectividad, CORS y metadatos; el contrato de autenticación y los de
-negocio se incorporarán en las siguientes etapas.
+### 3. Cerrar sesión (`POST /api/v1/auth/logout`)
+**Solicitud:**
+```json
+{
+  "refreshToken": "9jM3pL1aW2..."
+}
+```
+**Respuesta:** `204 No Content`.
 
-## Formato de errores
+### 4. Consultar sesión actual (`GET /api/v1/auth/me`)
+Cabecera requerida: `Authorization: Bearer <accessToken>`.
+**Respuesta exitosa (`200 OK`):**
+```json
+{
+  "username": "medico",
+  "fullName": "Dra. Ana López",
+  "role": "MEDICO",
+  "roleDisplayName": "Médico",
+  "loginTime": "2026-10-17T12:00:00Z"
+}
+```
 
-Los errores de controladores y seguridad usan `application/problem+json`, basado
-en Problem Details. Ejemplo de una ruta protegida:
+---
+
+## Formato de Errores (Problem Details RFC 7807 / 9457)
+
+Todos los errores de la API se responden con el content-type `application/problem+json`:
 
 ```json
 {
   "type": "about:blank",
   "title": "Unauthorized",
   "status": 401,
-  "detail": "Se requiere autenticación.",
-  "code": "AUTHENTICATION_REQUIRED"
+  "detail": "El token de autenticación ha expirado.",
+  "code": "TOKEN_EXPIRED",
+  "instance": "/api/v1/patients"
 }
 ```
 
-Los errores procesados por controladores incluyen `instance` con la ruta, sin
-parámetros de consulta. Los errores de validación incluirán un array `errors`
-con objetos `field` y `message`. El frontend debe usar `code` para sus decisiones;
-el texto de `detail` y `message` puede evolucionar.
+### Catálogo de Códigos Estables (`code`)
 
-| HTTP | Código | Situación |
+| HTTP | Código (`code`) | Descripción / Causa |
 | --- | --- | --- |
-| 400 | `VALIDATION_ERROR` | Campos inválidos en el cuerpo de una solicitud |
-| 400 | `HTTP_400` | JSON ilegible u otro error HTTP de entrada |
-| 401 | `AUTHENTICATION_REQUIRED` | Falta autenticación |
-| 403 | `ACCESS_DENIED` | Principal autenticado sin autorización |
-| 404 | `RESOURCE_NOT_FOUND` | Recurso no encontrado por un caso de uso |
-| 409 | Código definido por la regla | Conflicto de negocio |
-| 500 | `INTERNAL_ERROR` | Error técnico sin detalles internos |
-
-El filtro CORS puede rechazar un origen con HTTP 403 antes de llegar a los
-controladores; ese rechazo puede ser texto y no sigue el formato anterior.
-
-## Convenciones para próximas funcionalidades
-
-- DTO explícitos para entrada y salida; nunca serializar entidades JPA.
-- Fechas de calendario en `YYYY-MM-DD`, instantes en ISO 8601 con zona/offset.
-- Los contratos de listas paginadas, filtros, autenticación y rutas de negocio
-  se fijarán al desarrollar la primera funcionalidad que los necesite.
-- Ninguna ruta de negocio prevista debe considerarse disponible hasta aparecer
-  en OpenAPI y contar con implementación y pruebas.
-
-Para compartir el contrato actual con el equipo del frontend:
-
-```bash
-curl http://localhost:8080/v3/api-docs -o openapi.json
-```
+| 400 | `VALIDATION_ERROR` | Error en campos de la solicitud; incluye array `errors: [{field, message}]` |
+| 400 | `PASSWORD_POLICY_VIOLATION` | Contraseña no cumple con los requisitos mínimos de seguridad (>= 12 caracteres) |
+| 400 | `HTTP_400` | JSON malformado o cuerpo de petición ilegible |
+| 401 | `AUTHENTICATION_REQUIRED` | Falta la cabecera `Authorization: Bearer` en una ruta protegida |
+| 401 | `TOKEN_EXPIRED` | El token JWT expiró. El frontend emite el evento de sesión expirada |
+| 401 | `INVALID_TOKEN` | Token JWT con firma inválida, manipulado o refresh token revocado |
+| 401 | `INVALID_CREDENTIALS` | Usuario o contraseña incorrectos en login |
+| 401 | `ACCOUNT_LOCKED` | Cuenta bloqueada temporalmente tras 5 intentos fallidos consecutivos |
+| 401 | `ACCOUNT_INACTIVE` | Cuenta de usuario desactivada por un administrador |
+| 403 | `ACCESS_DENIED` | Usuario autenticado pero sin rol suficiente para la ruta solicitada |
+| 404 | `RESOURCE_NOT_FOUND` | Recurso solicitado no encontrado |
+| 404 | `USER_NOT_FOUND` | Usuario no encontrado en administración |
+| 409 | `USERNAME_ALREADY_EXISTS` | Intento de registrar un nombre de usuario que ya existe |
+| 500 | `INTERNAL_ERROR` | Error interno del servidor sin exponer detalles sensibles |
