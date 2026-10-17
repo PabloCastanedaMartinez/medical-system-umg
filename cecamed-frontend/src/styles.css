@@ -1,7 +1,8 @@
 /* ==========================================================================
    CECAMed Web — estilos
-   Criterio: software de uso clínico diario. Un solo color de marca (verde
-   quirúrgico), blancos y grises fríos, tipografía de alta legibilidad
+   Criterio: software de uso clínico diario. Rojo médico para la marca y la
+   acción principal, celeste para la selección, blancos y grises fríos,
+   tipografía de alta legibilidad
    (Atkinson Hyperlegible, diseñada por el Braille Institute) y estados con
    color solo donde informan algo.
    ========================================================================== */
@@ -55,6 +56,13 @@
 
   --radius: 6px;
   --radius-lg: 10px;
+
+  /* Medidas de la estructura: un mismo margen lateral para barra, línea de
+     estado y contenido; crece con la pantalla para aprovechar monitores grandes */
+  --shell-max: 1840px;
+  --gutter: clamp(16px, 2.6vw, 48px);
+  --appbar-h: 64px;
+  --section-gap: 24px;
   --focus: 0 0 0 3px rgb(2 136 209 / 0.3);
   --modal-shadow: 0 18px 40px -12px rgb(15 23 42 / 0.35);
   color-scheme: light;
@@ -121,8 +129,8 @@ body,
 body {
   margin: 0;
   font-family: var(--font);
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.55;
   color: var(--ink);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
@@ -586,13 +594,14 @@ textarea::placeholder {
   color: var(--ink);
 }
 .appbar-inner {
-  max-width: 1480px;
+  max-width: var(--shell-max);
   margin: 0 auto;
   display: flex;
   align-items: center;
-  gap: 28px;
-  min-height: 58px;
-  padding: 0 24px;
+  /* Aire entre marca, navegación y herramientas que crece con el ancho */
+  gap: clamp(16px, 3vw, 56px);
+  min-height: var(--appbar-h);
+  padding: 0 var(--gutter);
 }
 
 .brand {
@@ -604,9 +613,9 @@ textarea::placeholder {
   flex-shrink: 0;
 }
 .brand-name {
-  font-size: 19px;
+  font-size: 20px;
   font-weight: 700;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.01em;
 }
 .brand-mark {
   display: block;
@@ -616,23 +625,26 @@ textarea::placeholder {
 .mainnav {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: clamp(2px, 0.4vw, 8px);
   flex: 1;
   min-width: 0;
 }
 .mainnav-link {
   display: flex;
   align-items: center;
-  padding: 7px 12px;
+  min-height: 40px;
+  padding: 8px clamp(9px, 0.95vw, 16px);
   border-radius: var(--radius);
   color: var(--nav-ink);
   text-decoration: none;
   font-weight: 600;
   font-size: 15px;
   white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
 }
 .mainnav-link:hover {
   background: var(--hover);
+  color: var(--ink);
 }
 .mainnav-link.active {
   background: var(--accent-soft);
@@ -642,14 +654,20 @@ textarea::placeholder {
 .appbar-tools {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: clamp(8px, 1vw, 16px);
   margin-left: auto;
+  flex-shrink: 0;
+}
+.appbar-session {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .appbar-icon {
   display: inline-grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   border: 0;
   border-radius: var(--radius);
   background: transparent;
@@ -664,9 +682,9 @@ textarea::placeholder {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  line-height: 1.2;
-  padding: 0 6px;
-  max-width: 230px;
+  line-height: 1.25;
+  padding: 0 4px;
+  max-width: 240px;
 }
 .appbar-user-name {
   font-weight: 600;
@@ -690,13 +708,13 @@ textarea::placeholder {
   border-bottom: 1px solid var(--line);
 }
 .statusline-inner {
-  max-width: 1480px;
+  max-width: var(--shell-max);
   margin: 0 auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 22px;
-  padding: 6px 24px;
+  gap: 4px 28px;
+  padding: 7px var(--gutter);
   font-size: 13px;
   color: var(--muted);
 }
@@ -712,9 +730,9 @@ textarea::placeholder {
 .content {
   flex: 1;
   width: 100%;
-  max-width: 1480px;
+  max-width: var(--shell-max);
   margin: 0 auto;
-  padding: 26px 24px 48px;
+  padding: clamp(24px, 2.4vw, 40px) var(--gutter) 64px;
 }
 .page {
   width: 100%;
@@ -724,16 +742,17 @@ textarea::placeholder {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 16px 32px;
+  margin-bottom: 28px;
   flex-wrap: wrap;
 }
 .page-title {
-  font-size: 26px;
-  letter-spacing: -0.01em;
+  font-size: clamp(26px, 1.2vw + 14px, 32px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
 }
 .page-subtitle {
-  margin-top: 4px;
+  margin-top: 6px;
   color: var(--muted);
 }
 .page-actions {
@@ -748,35 +767,41 @@ textarea::placeholder {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  padding: 18px 20px;
+  padding: clamp(18px, 1.6vw, 28px) clamp(20px, 1.8vw, 32px);
   min-width: 0;
 }
 .card + .card,
 .stat-grid + .card,
 .reception-grid > .card + .card {
-  margin-top: 16px;
+  margin-top: var(--section-gap);
 }
 .card-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 8px 16px;
-  margin-bottom: 12px;
+  gap: 8px 24px;
+  margin-bottom: 16px;
 }
 .card-header h2,
 .section-title {
-  font-size: 18px;
+  font-size: 20px;
+  letter-spacing: -0.01em;
 }
 .card-header-links {
   display: flex;
-  gap: 18px;
+  gap: 24px;
+}
+/* Texto corrido dentro de paneles: medida de lectura cómoda aunque el panel sea ancho */
+.card > p,
+.section-title + p {
+  max-width: 72ch;
 }
 .section-title {
   margin: 2px 0 12px;
 }
 .section-title:not(:first-child) {
-  margin-top: 26px;
+  margin-top: 32px;
 }
 .subsection-title {
   font-size: 15px;
@@ -790,12 +815,13 @@ textarea::placeholder {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  margin-bottom: 16px;
+  margin-bottom: var(--section-gap);
 }
 .stat {
   display: flex;
   flex-direction: column;
-  padding: 14px 20px 16px;
+  gap: 2px;
+  padding: clamp(16px, 1.4vw, 24px) clamp(20px, 1.8vw, 32px);
   border-left: 1px solid var(--line);
   min-width: 0;
 }
@@ -808,10 +834,11 @@ textarea::placeholder {
   color: var(--muted);
 }
 .stat-value {
-  font-size: 34px;
+  font-size: clamp(34px, 1.6vw + 16px, 44px);
   font-weight: 700;
-  line-height: 1.15;
-  margin-top: 2px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-top: 4px;
   font-variant-numeric: tabular-nums;
 }
 .stat-subtitle {
@@ -827,8 +854,8 @@ textarea::placeholder {
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: 12px;
+  margin-bottom: 18px;
   flex-wrap: wrap;
 }
 .toolbar > select {
@@ -848,7 +875,7 @@ textarea::placeholder {
 .search-box {
   position: relative;
   flex: 1 1 280px;
-  max-width: 440px;
+  max-width: 520px;
   display: flex;
   align-items: center;
 }
@@ -886,12 +913,12 @@ textarea::placeholder {
   font-size: 14px;
   font-weight: 600;
   color: var(--muted);
-  padding: 8px 12px;
+  padding: 10px 14px;
   border-bottom: 2px solid var(--line-strong);
   white-space: nowrap;
 }
 .table td {
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--line);
   vertical-align: middle;
   color: var(--ink-2);
@@ -931,7 +958,7 @@ textarea::placeholder {
   gap: 4px;
   overflow-x: auto;
   border-bottom: 1px solid var(--line-strong);
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   scrollbar-width: thin;
 }
 .tabs button {
@@ -939,7 +966,7 @@ textarea::placeholder {
   border-bottom: 0;
   border-radius: var(--radius) var(--radius) 0 0;
   background: transparent;
-  padding: 9px 14px;
+  padding: 10px 18px;
   font-weight: 600;
   color: var(--muted);
   cursor: pointer;
@@ -1152,17 +1179,18 @@ textarea::placeholder {
   justify-content: space-between;
   align-items: flex-start;
   gap: 24px;
-  margin-bottom: 18px;
+  margin-bottom: var(--section-gap);
   padding: 0;
   overflow: hidden;
 }
 .patient-header-main {
   min-width: 0;
   flex: 1;
-  padding: 18px 22px;
+  padding: clamp(18px, 1.6vw, 28px) clamp(20px, 1.8vw, 32px);
 }
 .patient-header h2 {
-  font-size: 24px;
+  font-size: clamp(24px, 1vw + 14px, 30px);
+  letter-spacing: -0.02em;
 }
 .patient-meta {
   display: flex;
@@ -1197,10 +1225,10 @@ textarea::placeholder {
   font-weight: 600;
 }
 .patient-switch {
-  width: 340px;
+  width: clamp(320px, 24vw, 420px);
   max-width: 100%;
   margin: 0;
-  padding: 18px 22px;
+  padding: clamp(18px, 1.6vw, 28px) clamp(20px, 1.8vw, 32px);
   align-self: stretch;
   background: var(--surface-sunken);
   border-left: 1px solid var(--line);
@@ -1213,7 +1241,7 @@ textarea::placeholder {
 .consultations-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(300px, 1fr);
-  gap: 24px;
+  gap: clamp(24px, 2.4vw, 40px);
   align-items: start;
 }
 .consultation-detail {
@@ -1321,13 +1349,13 @@ textarea::placeholder {
 .reception-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
+  gap: var(--section-gap);
   align-items: start;
 }
 .reception-grid .waiting-room {
   order: -1;
 }
-@media (min-width: 1680px) {
+@media (min-width: 1600px) {
   .reception-grid {
     grid-template-columns: minmax(0, 2.2fr) minmax(340px, 1fr);
   }
@@ -1453,9 +1481,31 @@ textarea::placeholder {
 
 /* ---------- Adaptación a pantallas pequeñas ---------- */
 
-@media (max-width: 1240px) {
+@media (max-width: 1320px) {
   .appbar-user {
     display: none;
+  }
+}
+
+/* Pantallas medianas: la navegación sigue en una línea, con menos relleno para que no se rompa */
+@media (min-width: 961px) and (max-width: 1100px) {
+  .appbar-inner {
+    gap: 16px;
+  }
+  .mainnav-link {
+    padding-inline: 9px;
+    font-size: 14.5px;
+  }
+  .brand-name {
+    font-size: 18px;
+  }
+}
+
+/* Monitores grandes: filas de tabla más holgadas */
+@media (min-width: 1600px) {
+  .table th,
+  .table td {
+    padding-inline: 18px;
   }
 }
 
@@ -1482,7 +1532,7 @@ textarea::placeholder {
 @media (max-width: 960px) {
   .appbar-inner {
     gap: 12px;
-    padding: 8px 16px;
+    padding: 10px var(--gutter);
     flex-wrap: wrap;
   }
   .menu-toggle {
@@ -1500,11 +1550,6 @@ textarea::placeholder {
   }
   .mainnav-link {
     padding: 10px 12px;
-  }
-  .statusline-inner,
-  .content {
-    padding-left: 16px;
-    padding-right: 16px;
   }
   .content {
     padding-top: 20px;
