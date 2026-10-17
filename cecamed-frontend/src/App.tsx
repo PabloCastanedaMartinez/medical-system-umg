@@ -1,19 +1,15 @@
-import { Route, Routes } from 'react-router';
-import { Construction } from 'lucide-react';
-import { RequireAuth } from './auth/RequireAuth';
+import { Navigate, Route, Routes } from 'react-router';
+import { RequireAuth, RequireRole } from './auth/RequireAuth';
 import { MainLayout } from './layout/MainLayout';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { PatientsPage } from './pages/PatientsPage';
+import { MedicalRecordIndex, MedicalRecordPage } from './pages/MedicalRecordPage';
 import { AppointmentsPage } from './pages/AppointmentsPage';
 import { ReceptionPage } from './pages/ReceptionPage';
-import { EmptyState } from './components/Common';
+import { SettingsPage } from './pages/SettingsPage';
 
-/** Rutas (entrega 2 de 3): panel, pacientes, agenda y recepción. Expediente y configuración llegan en la entrega 3. */
-function EnConstruccion() {
-  return <EmptyState icon={Construction} message="Este módulo se incorporará en una próxima entrega." />;
-}
-
+/** Rutas: sustituyen a NavigationService + ViewType de JavaFX. */
 export function App() {
   return (
     <Routes>
@@ -27,9 +23,26 @@ export function App() {
       >
         <Route index element={<DashboardPage />} />
         <Route path="pacientes" element={<PatientsPage />} />
+        <Route
+          path="expediente"
+          element={
+            <RequireRole roles={['MEDICO']}>
+              <MedicalRecordIndex />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="expediente/:patientId"
+          element={
+            <RequireRole roles={['MEDICO']}>
+              <MedicalRecordPage />
+            </RequireRole>
+          }
+        />
         <Route path="agenda" element={<AppointmentsPage />} />
         <Route path="recepcion" element={<ReceptionPage />} />
-        <Route path="*" element={<EnConstruccion />} />
+        <Route path="configuracion" element={<SettingsPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
   );
