@@ -2,7 +2,10 @@
 
 Backend independiente para migrar CECAMed de escritorio a una aplicación web.
 Esta entrega corresponde únicamente a la arquitectura inicial; las funcionalidades
-clínicas se incorporarán por etapas. No contiene frontend ni dependencias de JavaFX.
+clínicas se incorporarán por etapas. No tiene dependencias de JavaFX.
+
+El frontend web está en `cecamed-frontend/` (React, TypeScript y Vite) y consume
+esta API. Ver [Frontend](#frontend).
 
 ## Stack
 
@@ -30,9 +33,11 @@ CECAMed-backend/
 ├── cecamed-application/      # Casos de uso y contratos de puertos
 ├── cecamed-infrastructure/   # JPA, migraciones, archivos e integraciones
 ├── cecamed-api/              # Spring Boot, REST, seguridad y contrato OpenAPI
+├── cecamed-frontend/         # Frontend web: React, TypeScript y Vite
 ├── docs/
 │   ├── architecture.md      # Límites, decisiones y plan de migración
-│   └── api-contract.md      # Guía de integración para el frontend
+│   ├── api-contract.md      # Guía de integración para el frontend
+│   └── frontend.md          # Arquitectura y decisiones del frontend
 ├── gradle/wrapper/
 ├── compose.yaml             # PostgreSQL local independiente
 └── .env.example
@@ -40,7 +45,7 @@ CECAMed-backend/
 
 ```mermaid
 flowchart LR
-    Frontend[Frontend externo] -->|HTTP / JSON| API[cecamed-api]
+    Frontend[cecamed-frontend] -->|HTTP / JSON| API[cecamed-api]
     API --> Application[cecamed-application]
     API --> Infrastructure[cecamed-infrastructure]
     Infrastructure --> Application
@@ -90,6 +95,28 @@ Los contratos y ejemplos de integración están en [api-contract.md](docs/api-co
 curl http://localhost:8080/api/v1/system/info
 curl http://localhost:8080/actuator/health
 ```
+
+## Frontend
+
+La interfaz web reemplaza las pantallas JavaFX y vive en `cecamed-frontend/`. Se
+desarrolla con Node.js 20 o superior, independiente de Gradle:
+
+```bash
+cd cecamed-frontend
+npm ci
+npm run dev        # contra esta API en :8080, en http://localhost:5173
+npm run dev:mock   # con API simulada, sin backend
+```
+
+En desarrollo, Vite reenvía `/api` al backend, así que no hace falta configurar CORS.
+Mientras no existan los endpoints de negocio, `npm run dev:mock` permite usar todas las
+pantallas con datos de ejemplo (`medico` / `medico123`, `recepcion` / `recepcion123`).
+
+| Documento | Contenido |
+| --- | --- |
+| [cecamed-frontend/README.md](cecamed-frontend/README.md) | Ejecución, scripts y estructura |
+| [docs/frontend.md](docs/frontend.md) | Arquitectura, sesión, fechas, apariencia y pendientes |
+| [contrato-api-esperado.md](cecamed-frontend/docs/contrato-api-esperado.md) | Rutas y DTO que el frontend necesita de esta API |
 
 ## Configuración
 

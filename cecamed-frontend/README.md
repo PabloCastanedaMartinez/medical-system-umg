@@ -61,7 +61,7 @@ src/
 ├── api/            # Cliente HTTP, endpoints y tipos de los DTO
 ├── auth/           # Sesión (token) y guardas de ruta por rol
 ├── components/     # Modal, confirmación, notificaciones, insignias, tarjetas
-├── layout/         # Barra lateral, barra superior y reloj
+├── layout/         # Barra superior con navegación, usuario, tema y reloj
 ├── mocks/          # API simulada (solo modo mock)
 ├── pages/          # Una página por vista de la aplicación de escritorio
 ├── theme/          # Tema claro/oscuro
@@ -72,6 +72,8 @@ src/
 docs/
 └── contrato-api-esperado.md   # Endpoints que necesita el frontend
 ```
+
+La arquitectura y las decisiones del frontend (sesión, fechas en hora de la clínica, carga de datos, colores y pendientes) están en [docs/frontend.md](../docs/frontend.md), en la raíz del repositorio.
 
 ## Equivalencias con la versión JavaFX
 
