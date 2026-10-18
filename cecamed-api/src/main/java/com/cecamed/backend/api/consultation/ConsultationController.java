@@ -87,8 +87,9 @@ public class ConsultationController {
                 /* updatedAt */ null  // Will be set by service
         );
 
+        consultation.setIcd10Code(request.icd10Code());
         Consultation createdConsultation = createConsultationUseCase.createConsultation(consultation);
-        return ResponseEntity.ok(toResponse(createdConsultation));
+        return ResponseEntity.created(java.net.URI.create("/api/v1/patients/" + patientId + "/consultations/" + createdConsultation.getConsultationId())).body(toResponse(createdConsultation));
     }
 
     @PutMapping("/{consultationId}")
@@ -97,6 +98,7 @@ public class ConsultationController {
             @PathVariable Long patientId,
             @PathVariable Long consultationId,
             @Valid @RequestBody ConsultationDtos.Request request) {
+        if (request.version() == null) throw new IllegalArgumentException("Se requiere version para editar.");
         // Get existing consultation first
         Consultation existingConsultation = getConsultationByIdUseCase.getConsultationById(consultationId);
 
@@ -110,22 +112,23 @@ public class ConsultationController {
                 existingConsultation.getConsultationId(),
                 existingConsultation.getPatientId(),
                 existingConsultation.getConsultationDate(),
-                request.consultationType() != null ? request.consultationType() : existingConsultation.getConsultationType(),
-                request.doctorName() != null ? request.doctorName() : existingConsultation.getDoctorName(),
-                request.reasonForVisit() != null ? request.reasonForVisit() : existingConsultation.getReasonForVisit(),
-                request.symptoms() != null ? request.symptoms() : existingConsultation.getSymptoms(),
-                request.examinationFindings() != null ? request.examinationFindings() : existingConsultation.getExaminationFindings(),
-                request.diagnosis() != null ? request.diagnosis() : existingConsultation.getDiagnosis(),
-                request.treatmentPlan() != null ? request.treatmentPlan() : existingConsultation.getTreatmentPlan(),
-                request.prescriptions() != null ? request.prescriptions() : existingConsultation.getPrescriptions(),
-                request.followUpInstructions() != null ? request.followUpInstructions() : existingConsultation.getFollowUpInstructions(),
-                request.vitalSigns() != null ? request.vitalSigns() : existingConsultation.getVitalSigns(),
-                request.notes() != null ? request.notes() : existingConsultation.getNotes(),
+                request.consultationType(),
+                request.doctorName(),
+                request.reasonForVisit(),
+                request.symptoms(),
+                request.examinationFindings(),
+                request.diagnosis(),
+                request.treatmentPlan(),
+                request.prescriptions(),
+                request.followUpInstructions(),
+                request.vitalSigns(),
+                request.notes(),
                 existingConsultation.getCreatedAt(), // Keep original createdAt
                 null, // updatedAt will be set by service
-                existingConsultation.getVersion() // Keep existing version
+                request.version()
         );
 
+        consultationToUpdate.setIcd10Code(request.icd10Code());
         Consultation updatedConsultation = updateConsultationUseCase.updateConsultation(consultationId, consultationToUpdate);
         return ResponseEntity.ok(toResponse(updatedConsultation));
     }
@@ -146,7 +149,7 @@ public class ConsultationController {
                 consultation.getVitalSigns(),
                 consultation.getNotes(),
                 consultation.getCreatedAt().toString(),
-                consultation.getUpdatedAt().toString()
+                consultation.getUpdatedAt().toString(), consultation.getConsultationDate().toString(), consultation.getIcd10Code(), consultation.getVersion()
         );
     }
 }

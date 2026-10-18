@@ -11,6 +11,9 @@ import java.util.Date;
  */
 public class PatientResponse {
 
+    private Long version;
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
     private Long id;
     private String identificationNumber; // puede ser null
     private String firstName;

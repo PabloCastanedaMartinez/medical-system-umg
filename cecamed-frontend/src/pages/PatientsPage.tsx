@@ -30,15 +30,17 @@ export function PatientsPage() {
 
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<PatientStatusFilter>('ACTIVE');
+  const [page, setPage] = useState(0);
+  useEffect(() => setPage(0), [search, status]);
   const debouncedSearch = useDebounced(search, 350);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Patient | null>(null);
 
   const { data, loading, error, reload } = useApi(
-    (signal) => patientsApi.list(debouncedSearch.trim(), status, signal),
-    [debouncedSearch, status],
+    (signal) => patientsApi.page(debouncedSearch.trim(), status, page, signal),
+    [debouncedSearch, status, page],
   );
-  const patients = data ?? [];
+  const patients = data?.content ?? [];
 
   // Acceso rápido desde el dashboard: /pacientes?nuevo=1
   useEffect(() => {
@@ -87,8 +89,8 @@ export function PatientsPage() {
     });
     if (!ok) return;
     try {
-      if (active) await patientsApi.deactivate(p.id);
-      else await patientsApi.activate(p.id);
+      if (active) await patientsApi.deactivate(p.id, p.version);
+      else await patientsApi.activate(p.id, p.version);
       toast.success('Estado actualizado', `El paciente ${p.fullName} fue ${active ? 'desactivado' : 'reactivado'} con éxito`);
       reload();
     } catch (err) {
@@ -205,6 +207,11 @@ export function PatientsPage() {
         )}
       </div>
 
+      <div className="toolbar" aria-label="Paginación de pacientes">
+        <button className="btn btn-ghost" disabled={page === 0 || loading} onClick={() => setPage(page - 1)}>Anterior</button>
+        <span>Página {page + 1} · {data?.totalElements ?? 0} pacientes</span>
+        <button className="btn btn-ghost" disabled={loading || page + 1 >= (data?.totalPages ?? 0)} onClick={() => setPage(page + 1)}>Siguiente</button>
+      </div>
       <PatientFormModal
         open={formOpen}
         patient={editing}

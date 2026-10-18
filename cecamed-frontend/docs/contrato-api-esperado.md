@@ -1,3 +1,7 @@
+> Referencia histórica de pantallas. Para identidad, pacientes, expediente y consultas,
+> el contrato vigente es [docs/api-contract.md](../../docs/api-contract.md).
+> Las propuestas de agenda y documentos se revisarán en el incremento 2.
+
 # Contrato de API que espera el frontend
 
 Este documento es para el equipo del backend (`cecamed-api`). Enumera las rutas, entradas y salidas que el frontend ya consume. Si al implementarlas se decide un nombre o formato distinto, basta con avisar: los cambios en el frontend se concentran en `src/api/endpoints.ts` y `src/api/types.ts`.

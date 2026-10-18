@@ -49,6 +49,45 @@ export function getAccessToken(): string | null {
   return accessToken;
 }
 
+const REFRESH_KEY = 'cecamed.refreshToken';
+let refreshToken: string | null = null;
+try { refreshToken = sessionStorage.getItem(REFRESH_KEY); } catch { /* memoria solamente */ }
+let sessionGeneration = 0;
+let refreshInFlight: Promise<void> | null = null;
+
+export function setSession(tokens: { accessToken: string; refreshToken: string } | null) {
+  sessionGeneration++;
+  setAccessToken(tokens?.accessToken ?? null);
+  refreshToken = tokens?.refreshToken ?? null;
+  try {
+    if (refreshToken) sessionStorage.setItem(REFRESH_KEY, refreshToken);
+    else sessionStorage.removeItem(REFRESH_KEY);
+  } catch { /* memoria solamente */ }
+}
+
+export async function endSession(): Promise<string | null> {
+  // Esperar la rotación evita revocar un token que ya fue reemplazado.
+  try { await refreshInFlight; } catch { /* la sesión ya expiró */ }
+  const token = refreshToken;
+  setSession(null);
+  return token;
+}
+
+async function refreshSession(): Promise<void> {
+  if (refreshInFlight) return refreshInFlight;
+  const generation = sessionGeneration;
+  const token = refreshToken;
+  refreshInFlight = (async () => {
+    if (!token) throw new ApiError(401, 'Sesión expirada', null);
+    const tokens = await request<{ accessToken: string; refreshToken: string }>('/auth/refresh', {
+      method: 'POST', body: { refreshToken: token }, silentAuth: true,
+    });
+    if (generation !== sessionGeneration) throw new ApiError(401, 'Sesión cerrada', null);
+    setSession(tokens);
+  })().finally(() => { refreshInFlight = null; });
+  return refreshInFlight;
+}
+
 type QueryValue = string | number | boolean | null | undefined;
 
 interface RequestOptions {
@@ -77,14 +116,15 @@ export function buildUrl(path: string, query?: Record<string, QueryValue>): stri
  * Envía la petición y aplica las reglas comunes a todas las llamadas: token Bearer, sesión
  * expirada (401) y errores Problem Details. Devuelve la respuesta solo si fue exitosa.
  */
-async function send(path: string, options: RequestOptions, accept: string): Promise<Response> {
+async function send(path: string, options: RequestOptions, accept: string, retried = false): Promise<Response> {
   const { method = 'GET', body, query, silentAuth = false, signal } = options;
   const isForm = body instanceof FormData;
 
   // Solo cabeceras permitidas por el CORS del backend: Authorization, Content-Type y Accept.
   const headers: Record<string, string> = { Accept: accept };
   if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json';
-  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  const sentToken = accessToken;
+  if (accessToken && !['/auth/login', '/auth/refresh', '/auth/logout'].includes(path)) headers.Authorization = `Bearer ${accessToken}`;
 
   let response: Response;
   try {
@@ -99,9 +139,18 @@ async function send(path: string, options: RequestOptions, accept: string): Prom
     throw new ApiError(0, 'No hay conexión con el servidor de CECAMed. Verifique que el backend esté en ejecución.', null);
   }
 
-  if (response.status === 401 && !silentAuth) {
-    setAccessToken(null);
-    window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT));
+  if (response.status === 401 && !['/auth/login', '/auth/refresh', '/auth/logout'].includes(path)) {
+    if (!retried && refreshToken) {
+      try {
+        // Otra petición puede haber completado la rotación mientras ésta esperaba.
+        if (sentToken === accessToken) await refreshSession();
+        return await send(path, options, accept, true);
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.status !== 401) throw error;
+      }
+    }
+    setSession(null);
+    if (!silentAuth) window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT));
   }
 
   if (!response.ok) {

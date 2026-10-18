@@ -36,7 +36,12 @@ class ConsultationServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        consultationService = new ConsultationService(consultationRepository);
+        var patients = mock(com.cecamed.backend.application.patient.port.out.PatientRepositoryPort.class);
+        var patient = new com.cecamed.backend.domain.patient.Patient();
+        patient.setActive(true);
+        when(patients.findById(any())).thenReturn(Optional.of(patient));
+        consultationService = new ConsultationService(consultationRepository, patients,
+            java.time.Clock.fixed(Instant.parse("2026-10-16T11:00:00Z"), java.time.ZoneOffset.UTC));
     }
 
     @Test

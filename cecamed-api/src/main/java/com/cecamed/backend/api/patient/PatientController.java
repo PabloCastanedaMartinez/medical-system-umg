@@ -32,10 +32,14 @@ public class PatientController {
      * @return lista de pacientes
      */
     @GetMapping
-    public ResponseEntity<PatientResponse[]> listPatients(
+    public ResponseEntity<PagedResult<PatientResponse>> listPatients(
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
 
+        if (status != null && !java.util.Set.of("ACTIVE", "INACTIVE", "ALL").contains(status.toUpperCase(java.util.Locale.ROOT))) {
+            throw new IllegalArgumentException("status debe ser ACTIVE, INACTIVE o ALL.");
+        }
         Boolean active = null;
         if ("ACTIVE".equalsIgnoreCase(status)) {
             active = true;
@@ -43,10 +47,8 @@ public class PatientController {
             active = false;
         } // si es ALL o null, active permanece null (todos)
 
-        // Usamos un tamaño de página grande para obtener todos los resultados (hasta el límite del servicio)
-        PagedResult<PatientResponse> paged = patientUseCase.searchPatients(0, 10000, search, active);
-        PatientResponse[] patients = paged.content().toArray(new PatientResponse[0]);
-        return ResponseEntity.ok(patients);
+        PagedResult<PatientResponse> paged = patientUseCase.searchPatients(page, size, search, active);
+        return ResponseEntity.ok(paged);
     }
 
     /**
@@ -69,13 +71,11 @@ public class PatientController {
      */
     @PostMapping
     public ResponseEntity<PatientResponse> createPatient(
-            @Valid @RequestBody PatientRequest request) {
+            @Valid @RequestBody PatientRequest request, java.security.Principal principal, jakarta.servlet.http.HttpServletRequest http) {
 
-        // En una aplicación real, obtendríamos el usuario y la IP del contexto de seguridad.
-        // Por simplicidad, usamos valores placeholder.
-        String performedBy = "system"; // TODO: obtener de SecurityContext
-        String ipAddress = "0.0.0.0"; // TODO: obtener de HttpServletRequest
-        String userAgent = "unknown"; // TODO: obtener de HttpServletRequest
+        String performedBy = principal.getName();
+        String ipAddress = http.getRemoteAddr();
+        String userAgent = http.getHeader("User-Agent");
 
         PatientResponse created = patientUseCase.createPatient(request, performedBy, ipAddress, userAgent);
         URI location = URI.create("/api/v1/patients/" + created.getId());
@@ -92,12 +92,13 @@ public class PatientController {
     @PutMapping("/{id}")
     public ResponseEntity<PatientResponse> updatePatient(
             @PathVariable Long id,
-            @Valid @RequestBody PatientRequest request) {
+            @Valid @RequestBody PatientRequest request, java.security.Principal principal, jakarta.servlet.http.HttpServletRequest http) {
 
-        String performedBy = "system";
-        String ipAddress = "0.0.0.0";
-        String userAgent = "unknown";
+        String performedBy = principal.getName();
+        String ipAddress = http.getRemoteAddr();
+        String userAgent = http.getHeader("User-Agent");
 
+        if (request.getVersion() == null) throw new IllegalArgumentException("Se requiere version para editar.");
         PatientResponse updated = patientUseCase.updatePatient(id, request, performedBy, ipAddress, userAgent);
         return ResponseEntity.ok(updated);
     }
@@ -109,12 +110,12 @@ public class PatientController {
      * @return respuesta sin contenido
      */
     @PatchMapping("/{id}/activate")
-    public ResponseEntity<Void> activatePatient(@PathVariable Long id) {
-        String performedBy = "system";
-        String ipAddress = "0.0.0.0";
-        String userAgent = "unknown";
+    public ResponseEntity<Void> activatePatient(@PathVariable Long id, @RequestParam Long version, java.security.Principal principal, jakarta.servlet.http.HttpServletRequest http) {
+        String performedBy = principal.getName();
+        String ipAddress = http.getRemoteAddr();
+        String userAgent = http.getHeader("User-Agent");
 
-        patientUseCase.activatePatient(id, performedBy, ipAddress, userAgent);
+        patientUseCase.activatePatient(id, version, performedBy, ipAddress, userAgent);
         return ResponseEntity.noContent().build();
     }
 
@@ -125,12 +126,12 @@ public class PatientController {
      * @return respuesta sin contenido
      */
     @PatchMapping("/{id}/deactivate")
-    public ResponseEntity<Void> deactivatePatient(@PathVariable Long id) {
-        String performedBy = "system";
-        String ipAddress = "0.0.0.0";
-        String userAgent = "unknown";
+    public ResponseEntity<Void> deactivatePatient(@PathVariable Long id, @RequestParam Long version, java.security.Principal principal, jakarta.servlet.http.HttpServletRequest http) {
+        String performedBy = principal.getName();
+        String ipAddress = http.getRemoteAddr();
+        String userAgent = http.getHeader("User-Agent");
 
-        patientUseCase.deactivatePatient(id, performedBy, ipAddress, userAgent);
+        patientUseCase.deactivatePatient(id, version, performedBy, ipAddress, userAgent);
         return ResponseEntity.noContent().build();
     }
 }

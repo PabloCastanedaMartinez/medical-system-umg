@@ -29,7 +29,7 @@ export function RequireRole({ roles, children }: { roles: UserRole[]; children: 
     return (
       <EmptyState
         icon={ShieldAlert}
-        message="Acceso restringido: el perfil de Recepción no tiene permisos para consultar el expediente clínico detallado."
+        message="Su perfil no tiene permisos para acceder a esta sección."
       />
     );
   }

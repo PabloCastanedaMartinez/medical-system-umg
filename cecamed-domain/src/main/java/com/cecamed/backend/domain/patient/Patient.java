@@ -12,6 +12,15 @@ import java.util.UUID;
  */
 public class Patient {
 
+    private java.time.Instant createdAt;
+    private java.time.Instant updatedAt;
+    public java.time.Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(java.time.Instant value) { createdAt = value; }
+    public java.time.Instant getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(java.time.Instant value) { updatedAt = value; }
+    private Long version;
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
     private Long id;
     private String identificationNumber; // normalizado, puede ser null
     private String firstName;
@@ -78,7 +87,7 @@ public class Patient {
         Objects.requireNonNull(bloodType, "bloodType no puede ser nulo");
 
         // Validar que la fecha de nacimiento no sea futura
-        LocalDate today = LocalDate.now(clock);
+        LocalDate today = LocalDate.now(clock.withZone(java.time.ZoneId.of("America/Guatemala")));
         if (birthDate.isAfter(today)) {
             throw new BusinessRuleException("PATIENT_FUTURE_BIRTH_DATE",
                     "La fecha de nacimiento no puede ser una fecha futura");
@@ -119,6 +128,8 @@ public class Patient {
         patient.active = true;
         patient.medicalRecordNumber = medicalRecordNumber;
 
+        patient.createdAt = clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+        patient.updatedAt = clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         return patient;
     }
 
@@ -167,7 +178,7 @@ public class Patient {
         Objects.requireNonNull(bloodType, "bloodType no puede ser nulo");
 
         // Validar que la fecha de nacimiento no sea futura
-        LocalDate today = LocalDate.now(clock);
+        LocalDate today = LocalDate.now(clock.withZone(java.time.ZoneId.of("America/Guatemala")));
         if (birthDate.isAfter(today)) {
             throw new BusinessRuleException("PATIENT_FUTURE_BIRTH_DATE",
                     "La fecha de nacimiento no puede ser una fecha futura");
@@ -183,6 +194,7 @@ public class Patient {
                     "El apellido del paciente no puede estar vacío");
         }
 
+        this.updatedAt = clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         this.firstName = firstName.trim();
         this.lastName = lastName.trim();
         this.fullName = this.firstName + " " + this.lastName;
@@ -202,26 +214,27 @@ public class Patient {
      * Activa el paciente.
      * Lanza PatientInactiveException si ya está activo.
      *
-     * @param clock reloj para establecer la fecha de actualización (no se usa en dominio, pero se mantiene por consistencia)
+     * @param clock reloj para establecer la fecha de actualización
      */
     public void activate(Clock clock) {
         if (this.active) {
             throw new BusinessRuleException("PATIENT_ALREADY_ACTIVE", "El paciente ya está activo");
         }
+        this.updatedAt = clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         this.active = true;
-        // En una implementación real, se actualizaría un timestamp de actualización, pero eso pertenece a la capa de infraestructura
     }
 
     /**
      * Desactiva el paciente.
      * Lanza PatientInactiveException si ya está inactivo.
      *
-     * @param clock reloj para establecer la fecha de actualización (no se usa en dominio, pero se mantiene por consistencia)
+     * @param clock reloj para establecer la fecha de actualización
      */
     public void deactivate(Clock clock) {
         if (!this.active) {
             throw new BusinessRuleException("PATIENT_ALREADY_INACTIVE", "El paciente ya está inactivo");
         }
+        this.updatedAt = clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         this.active = false;
     }
 

@@ -23,6 +23,9 @@ public class Consultation {
     private String followUpInstructions;
     private String vitalSigns;
     private String notes;
+    private String icd10Code;
+    public String getIcd10Code() { return icd10Code; }
+    public void setIcd10Code(String value) { icd10Code = value; }
     private Instant createdAt;
     private Instant updatedAt;
     private Long version; // For optimistic locking
@@ -77,6 +80,12 @@ public class Consultation {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.version = 0L; // Initial version for new consultations
+    }
+
+    public void initialize(java.time.Instant now) {
+        consultationDate = now;
+        createdAt = now;
+        updatedAt = now;
     }
 
     public Long getConsultationId() {

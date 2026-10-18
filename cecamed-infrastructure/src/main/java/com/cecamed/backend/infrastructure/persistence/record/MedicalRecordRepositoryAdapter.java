@@ -29,6 +29,6 @@ public class MedicalRecordRepositoryAdapter implements MedicalRecordRepositoryPo
     @Override
     public MedicalRecord save(MedicalRecord medicalRecord) {
         MedicalRecordJpaEntity entity = MedicalRecordJpaEntity.fromDomain(medicalRecord);
-        return repository.save(entity).toDomain();
+        return repository.saveAndFlush(entity).toDomain();
     }
 }

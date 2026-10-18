@@ -6,7 +6,9 @@ TypeScript y Vite, y consume la API REST de `cecamed-api` bajo `/api/v1`.
 
 Este documento explica cómo está organizado y qué decisiones se tomaron. Para ejecutarlo,
 ver [cecamed-frontend/README.md](../cecamed-frontend/README.md). Las rutas que necesita del
-backend están en [contrato-api-esperado.md](../cecamed-frontend/docs/contrato-api-esperado.md).
+backend están en [api-contract.md](api-contract.md). El
+[contrato esperado](../cecamed-frontend/docs/contrato-api-esperado.md) describe también
+las rutas pendientes de los siguientes incrementos.
 
 ## Stack
 
@@ -20,8 +22,7 @@ backend están en [contrato-api-esperado.md](../cecamed-frontend/docs/contrato-a
 | Atkinson Hyperlegible Next | 5.3.0 | Tipografía de alta legibilidad |
 
 Las versiones están fijadas en `package.json` y `package-lock.json`. Se instalan con
-`npm ci` para que todo el equipo use exactamente las mismas. `npm audit` reporta 0
-vulnerabilidades.
+`npm ci` para que todo el equipo use exactamente las mismas.
 
 ## Arquitectura
 
@@ -74,20 +75,22 @@ backend se corrige en un solo archivo.
 
 ## Sesión y permisos
 
-1. `LoginPage` envía usuario y contraseña a `POST /auth/login` y recibe un token.
-2. El token se guarda en `sessionStorage`, que se borra al cerrar la pestaña. En un equipo
+1. `LoginPage` envía usuario y contraseña a `POST /auth/login` y recibe un access token
+   y un refresh token rotatorio.
+2. Ambos tokens se guardan en `sessionStorage`, que se borra al cerrar la pestaña. En un equipo
    compartido de la clínica, la sesión no queda abierta para la siguiente persona.
-3. Cada petición lo envía como `Authorization: Bearer <token>`. El backend es stateless y
-   no usa cookies.
-4. Si cualquier respuesta es 401, el cliente borra el token y emite un evento. `AuthContext`
-   cierra la sesión y la pantalla de acceso avisa que expiró. Esto incluye la descarga de
-   documentos, que usa `requestBlob` del mismo cliente.
+3. Las peticiones protegidas envían `Authorization: Bearer <accessToken>`. Login, refresh
+   y logout no envían Bearer. El backend es stateless y no usa cookies.
+4. Ante un 401 protegido, el cliente comparte una sola rotación de refresh entre
+   peticiones concurrentes y reintenta una vez. Si la sesión sigue sin ser válida,
+   borra ambos tokens y avisa a `AuthContext`. Las descargas usan el mismo cliente.
+5. Logout espera cualquier rotación pendiente y revoca el último refresh token.
 
 Todas las rutas, salvo `/login`, están dentro de `RequireAuth`. El expediente clínico está
 además dentro de `RequireRole` con el rol `MEDICO`; el menú lo oculta para `RECEPCION`.
-El frontend solo oculta: **el backend debe validar los permisos** en cada ruta. La
-autenticación y los roles todavía no existen en `cecamed-api`, y el alcance del rol de
-administración que menciona `architecture.md` está por definir.
+El backend valida los permisos de cada ruta. MEDICO y RECEPCION acceden a pacientes;
+MEDICO accede al contenido clínico. ADMIN entra a configuración y administra las cuentas
+mediante `/api/v1/users/**`. La autenticación y los roles están implementados en `cecamed-api`.
 
 ## Comunicación con la API
 
@@ -108,7 +111,8 @@ de la clínica, `America/Guatemala`. El frontend trabaja así:
 | Caso | Comportamiento |
 | --- | --- |
 | Recibir un instante (`…Z` o `…-06:00`) | Se convierte y se muestra en hora de Guatemala |
-| Enviar fecha y hora (citas, consultas, bloqueos) | `2026-10-15T09:30:00-06:00` |
+| Enviar fecha y hora (citas y bloqueos pendientes) | `2026-10-15T09:30:00-06:00` |
+| Crear una consulta | El servidor asigna el instante; no se envía una fecha retroactiva |
 | Filtros de la agenda y recepción | Inicio y fin del día de la clínica, con offset |
 | "Ahora" (reloj, hoy, horarios pasados) | `clinicNow()`, nunca `new Date()` |
 | Fechas de calendario (nacimiento) | `YYYY-MM-DD`, sin hora |
@@ -178,9 +182,8 @@ frontend y la API quedan en dominios distintos, se compila con
 
 | Pendiente | Responsable |
 | --- | --- |
-| Endpoints de negocio del contrato | Backend |
-| Login, validación de tokens y roles | Backend |
+| Endpoints de agenda, recepción, documentos, horarios y bloqueos | Backend |
 | Campo `checkedInAt` en citas | Backend |
-| Separar DTO de solicitud y respuesta; acordar campos obligatorios, nulos y calculados | Backend y frontend |
+| Acordar DTO de los endpoints pendientes; pacientes, expediente y consultas ya tienen contrato integrado | Backend y frontend |
 | Quitar `filePath` de `PatientDocument` en la respuesta | Backend |
 | Tipar la API simulada (quitar `@ts-nocheck`) | Frontend |

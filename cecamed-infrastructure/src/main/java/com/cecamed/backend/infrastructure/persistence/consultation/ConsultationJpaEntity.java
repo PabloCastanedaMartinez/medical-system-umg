@@ -17,6 +17,7 @@ import java.util.Objects;
 public class ConsultationJpaEntity {
 
     @Id
+    @jakarta.persistence.GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
     private Long consultationId; // Primary key
 
     @Column(name = "patient_id", nullable = false)
@@ -57,6 +58,9 @@ public class ConsultationJpaEntity {
 
     @Column(name = "notes")
     private String notes;
+    private String icd10Code;
+    public String getIcd10Code() { return icd10Code; }
+    public void setIcd10Code(String value) { icd10Code = value; }
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -96,7 +100,7 @@ public class ConsultationJpaEntity {
     }
 
     public static ConsultationJpaEntity fromDomain(Consultation domain) {
-        return new ConsultationJpaEntity(
+        var entity = new ConsultationJpaEntity(
                 domain.getConsultationId(),
                 domain.getPatientId(),
                 domain.getConsultationDate(),
@@ -113,12 +117,14 @@ public class ConsultationJpaEntity {
                 domain.getNotes(),
                 domain.getCreatedAt(),
                 domain.getUpdatedAt(),
-                domain.getVersion()
+                domain.getConsultationId() == null ? null : domain.getVersion()
         );
+        entity.icd10Code = domain.getIcd10Code();
+        return entity;
     }
 
     public Consultation toDomain() {
-        return new Consultation(
+        var domain = new Consultation(
                 this.consultationId,
                 this.patientId,
                 this.consultationDate,
@@ -137,6 +143,8 @@ public class ConsultationJpaEntity {
                 this.updatedAt,
                 this.version
         );
+        domain.setIcd10Code(icd10Code);
+        return domain;
     }
 
     public Long getConsultationId() {

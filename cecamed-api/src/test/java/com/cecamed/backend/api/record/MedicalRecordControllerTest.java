@@ -83,8 +83,8 @@ class MedicalRecordControllerTest {
                 testMedicalRecord.getWaterGlassesPerDay(),
                 testMedicalRecord.getMealsPerDay(),
                 testMedicalRecord.getCreatedAt().toString(),
-                testMedicalRecord.getUpdatedAt().toString()
-        );
+                testMedicalRecord.getUpdatedAt().toString(),
+                0L);
     }
 
     @Test
@@ -132,8 +132,8 @@ class MedicalRecordControllerTest {
                 "New general observations",
                 "New gynecological history",
                 10,
-                4
-        );
+                4,
+                0L);
 
         MedicalRecord existingRecord = new MedicalRecord(
                 patientId,
@@ -200,7 +200,7 @@ class MedicalRecordControllerTest {
         // Given
         Long patientId = 1L;
         MedicalRecordDtos.Request invalidRequest = new MedicalRecordDtos.Request(
-                null, // Null allergies to trigger @NotBlank validation
+                "x".repeat(2001), // Exceeds the clinical field limit
                 "New pathological history",
                 "New non-pathological history",
                 "New family history",
@@ -210,8 +210,8 @@ class MedicalRecordControllerTest {
                 "New general observations",
                 "New gynecological history",
                 10,
-                4
-        );
+                4,
+                0L);
 
         // Need to mock getMedicalRecordUseCase to return an existing record so the controller gets past the first step
         MedicalRecord existingRecord = new MedicalRecord(
@@ -257,8 +257,8 @@ class MedicalRecordControllerTest {
                 "New general observations",
                 "New gynecological history",
                 10,
-                4
-        );
+                4,
+                0L);
 
         // Mock the getMedicalRecordUseCase to throw exception when record not found
         BDDMockito.given(getMedicalRecordUseCase.getMedicalRecord(patientId))

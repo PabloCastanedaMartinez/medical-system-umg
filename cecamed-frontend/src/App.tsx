@@ -2,7 +2,7 @@ import { Navigate, Route, Routes } from 'react-router';
 import { RequireAuth, RequireRole } from './auth/RequireAuth';
 import { MainLayout } from './layout/MainLayout';
 import { LoginPage } from './pages/LoginPage';
-import { DashboardPage } from './pages/DashboardPage';
+import { useAuth } from './auth/AuthContext';
 import { PatientsPage } from './pages/PatientsPage';
 import { MedicalRecordIndex, MedicalRecordPage } from './pages/MedicalRecordPage';
 import { AppointmentsPage } from './pages/AppointmentsPage';
@@ -11,6 +11,7 @@ import { SettingsPage } from './pages/SettingsPage';
 
 /** Rutas: sustituyen a NavigationService + ViewType de JavaFX. */
 export function App() {
+  const { user } = useAuth();
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
@@ -21,8 +22,8 @@ export function App() {
           </RequireAuth>
         }
       >
-        <Route index element={<DashboardPage />} />
-        <Route path="pacientes" element={<PatientsPage />} />
+        <Route index element={<Navigate to={user?.role === 'ADMIN' ? '/configuracion' : '/pacientes'} replace />} />
+        <Route path="pacientes" element={<RequireRole roles={['MEDICO', 'RECEPCION']}><PatientsPage /></RequireRole>} />
         <Route
           path="expediente"
           element={
@@ -39,8 +40,8 @@ export function App() {
             </RequireRole>
           }
         />
-        <Route path="agenda" element={<AppointmentsPage />} />
-        <Route path="recepcion" element={<ReceptionPage />} />
+        <Route path="agenda" element={<RequireRole roles={['MEDICO', 'RECEPCION']}><AppointmentsPage /></RequireRole>} />
+        <Route path="recepcion" element={<RequireRole roles={['MEDICO', 'RECEPCION']}><ReceptionPage /></RequireRole>} />
         <Route path="configuracion" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

@@ -14,7 +14,10 @@ public class MedicalRecordService implements GetMedicalRecordUseCase, UpdateMedi
 
     private final MedicalRecordRepositoryPort medicalRecordRepository;
 
-    public MedicalRecordService(MedicalRecordRepositoryPort medicalRecordRepository) {
+    private final java.time.Clock clock;
+
+    public MedicalRecordService(MedicalRecordRepositoryPort medicalRecordRepository, java.time.Clock clock) {
+        this.clock = clock;
         this.medicalRecordRepository = medicalRecordRepository;
     }
 
@@ -30,6 +33,9 @@ public class MedicalRecordService implements GetMedicalRecordUseCase, UpdateMedi
         MedicalRecord existing = medicalRecordRepository.findByPatientId(patientId)
                 .orElseThrow(() -> new MedicalRecordNotFoundException(patientId));
 
+        if (medicalRecord.getVersion() == null || !medicalRecord.getVersion().equals(existing.getVersion())) {
+            throw new com.cecamed.backend.domain.patient.StaleVersionException("El expediente cambió. Recargue antes de editar.");
+        }
         // Update the fields (keeping the same patientId and version for optimistic locking)
         MedicalRecord updated = new MedicalRecord(
                 existing.getPatientId(),
@@ -46,7 +52,7 @@ public class MedicalRecordService implements GetMedicalRecordUseCase, UpdateMedi
                 medicalRecord.getWaterGlassesPerDay(),
                 medicalRecord.getMealsPerDay(),
                 existing.getCreatedAt(), // Keep original createdAt
-                medicalRecord.getUpdatedAt(), // Set new updatedAt
+                clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS),
                 existing.getVersion() // Keep existing version - will be incremented by JPA
         );
 

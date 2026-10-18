@@ -13,7 +13,7 @@ public class MedicalRecordDtos {
      * Contiene solo los campos editables.
      */
     public record Request(
-            @NotBlank String allergies,
+            @Size(max = 2000) String allergies,
             @Size(max = 2000) String pathologicalHistory,
             @Size(max = 2000) String nonPathologicalHistory,
             @Size(max = 1000) String familyHistory,
@@ -22,8 +22,9 @@ public class MedicalRecordDtos {
             @Size(max = 1000) String currentMedications,
             @Size(max = 2000) String generalObservations,
             @Size(max = 1000) String gynecologicalObstetricHistory,
-            Integer waterGlassesPerDay,
-            Integer mealsPerDay
+            @jakarta.validation.constraints.PositiveOrZero Integer waterGlassesPerDay,
+            @jakarta.validation.constraints.PositiveOrZero Integer mealsPerDay,
+            @jakarta.validation.constraints.NotNull @jakarta.validation.constraints.PositiveOrZero Long version
     ) {}
 
     /**
@@ -44,6 +45,7 @@ public class MedicalRecordDtos {
             Integer waterGlassesPerDay,
             Integer mealsPerDay,
             String createdAt,
-            String updatedAt
+            String updatedAt,
+            Long version
     ) {}
 }

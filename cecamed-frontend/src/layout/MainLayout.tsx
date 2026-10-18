@@ -56,7 +56,7 @@ export function MainLayout() {
     navigate('/login', { replace: true });
   };
 
-  const items = NAV.filter((item) => !item.medicoOnly || isMedico);
+  const items = NAV.filter((item) => (!item.medicoOnly || isMedico) && (user?.role !== 'ADMIN' || item.to === '/configuracion'));
 
   return (
     <div className="app-shell">

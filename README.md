@@ -1,11 +1,11 @@
 # CECAMed Backend
 
 Backend independiente para migrar CECAMed de escritorio a una aplicación web.
-Esta entrega corresponde únicamente a la arquitectura inicial; las funcionalidades
-clínicas se incorporarán por etapas. No tiene dependencias de JavaFX.
-
-El frontend web está en `cecamed-frontend/` (React, TypeScript y Vite) y consume
-esta API. Ver [Frontend](#frontend).
+Incluye el frontend web en `cecamed-frontend`, identidad y acceso, pacientes,
+expediente y consultas básicas persistidas. El incremento 1 integra el recorrido
+login → paciente → expediente → consulta con control de versiones y sesión con
+refresh. No depende de JavaFX. El estado revisado y los siguientes incrementos
+están en [PLAN.md](PLAN.md).
 
 ## Stack
 
@@ -93,7 +93,8 @@ La URL local se construye con `DB_HOST`, `DB_PORT` y `DB_NAME`. Si se proporcion
 | Cierre de sesión | POST | `/api/v1/auth/logout` | Público |
 | Usuario autenticado | GET | `/api/v1/auth/me` | Autenticado (`MEDICO`, `RECEPCION`, `ADMIN`) |
 | Gestión de usuarios | * | `/api/v1/users/**` | Exclusivo `ADMIN` |
-| Rutas de negocio clínico | * | `/api/v1/patients/**`, `/api/v1/appointments/**`, etc. | `MEDICO` o `RECEPCION` |
+| Pacientes administrativos | * | `/api/v1/patients`, `/api/v1/patients/{id}` y cambios de estado | `MEDICO` o `RECEPCION` |
+| Expediente y consultas | * | `/api/v1/patients/{id}/medical-record`, `/api/v1/patients/{id}/consultations/**` | Solo `MEDICO` |
 
 La documentación interactiva está incluida en el backend para explorar la API.
 Los contratos y ejemplos de integración están en [api-contract.md](docs/api-contract.md).
@@ -116,8 +117,8 @@ npm run dev:mock   # con API simulada, sin backend
 ```
 
 En desarrollo, Vite reenvía `/api` al backend, así que no hace falta configurar CORS.
-Mientras no existan los endpoints de negocio, `npm run dev:mock` permite usar todas las
-pantallas con datos de ejemplo (`medico` / `medico123`, `recepcion` / `recepcion123`).
+Pacientes, expediente y consultas básicas consumen la API real.
+`npm run dev:mock` permite explorar también las pantallas pendientes con datos de ejemplo (`medico` / `medico123`, `recepcion` / `recepcion123`).
 
 | Documento | Contenido |
 | --- | --- |
@@ -179,6 +180,8 @@ java -jar cecamed-api/build/libs/cecamed-backend.jar
 
 Las pruebas normales cubren arranque de contexto, contrato OpenAPI, errores HTTP,
 validación de entradas, bloqueo de rutas, CORS, separación de perfiles y reloj UTC.
+También ejecutan el flujo clínico con persistencia, auditoría, versiones obsoletas,
+escrituras simultáneas, permisos y ciclo de sesión.
 Usan H2 con Flyway desactivado y no requieren PostgreSQL.
 Los informes se generan en `cecamed-api/build/reports/tests/test/index.html`.
 
@@ -204,8 +207,10 @@ en CI con una base aislada. Los datos de `compose.test.yaml` se descartan al det
 
 Se mantienen las tecnologías de persistencia del CECAMed original, con una base
 y un volumen nuevos. Flyway es el único responsable de evolucionar el esquema;
-Hibernate utiliza `ddl-auto=validate`. Aún no existen tablas de negocio ni
-migraciones SQL versionadas. Flyway preparará su esquema e historial al arrancar.
+Hibernate utiliza `ddl-auto=validate`. Las migraciones V1–V5 crean identidad,
+auditoría, pacientes, consultas y expedientes y estabilizan sus datos. Consultar la
+[secuencia de migraciones](cecamed-infrastructure/src/main/resources/db/migration/README.md)
+antes de actualizar una base existente.
 La validación de migraciones y de sus nombres está habilitada; `clean` y el
 baseline automático están deshabilitados. La inicialización mediante `schema.sql`
 o `data.sql` también está deshabilitada para que Flyway sea el único responsable.
@@ -216,9 +221,11 @@ usar `Instant.now(clock)`; las fechas civiles continúan siendo `LocalDate`. La
 conversión para mostrar horarios de la clínica usará `America/Guatemala`.
 
 La entrega incluye módulos, configuración, manejo uniforme de errores, CORS,
-seguridad restrictiva, OpenAPI, información de versión y salud del servicio.
-Quedan para siguientes etapas la autenticación y roles, pacientes, expedientes,
-consultas, citas, recepción, documentos, inventario y Google Calendar.
+autenticación Bearer, roles, OpenAPI, información de versión y salud del servicio.
+Pacientes, expedientes y consultas básicas tienen un contrato integrado y probado.
+Firma/enmiendas, documentos, citas, recepción, horarios, inventario, reportes y
+Google Calendar no forman parte de esta entrega. Existen cambios sin commit de
+otras ramas para varias de esas áreas; requieren su propia integración y aceptación.
 El código y los datos de `../CECAMed` no se modifican ni se copian automáticamente.
 
 Para detener la base conservando sus datos:
@@ -226,3 +233,33 @@ Para detener la base conservando sus datos:
 ```bash
 docker compose down
 ```
+
+## Frontend y verificación del incremento 1
+
+```bash
+cd cecamed-frontend
+npm ci
+npm test
+npm run build
+npm run dev
+```
+
+El cliente usa `/api/v1` mediante el proxy de Vite. MEDICO y RECEPCION entran a
+pacientes; ADMIN entra a configuración y conserva la administración de usuarios
+por API. Los tokens se guardan en `sessionStorage`; los 401 de rutas protegidas
+rotan el refresh una sola vez y reintentan la petición. Login/refresh/logout no
+envían un Bearer expirado. Logout revoca el último refresh y borra la sesión local.
+
+Para probar manualmente: crear un usuario MEDICO con el ADMIN inicial mediante
+`POST /api/v1/users`, iniciar sesión, registrar un paciente, abrir su expediente,
+guardar antecedentes, registrar una consulta y editarla. Una edición obsoleta
+responde 409; recargar los datos antes de volver a guardar. Las fechas de creación
+y consulta las asigna el servidor. La fecha de nacimiento admite el día actual
+según Guatemala. Consultar [el contrato](docs/api-contract.md).
+
+Validación local (2026-10-18): 103 pruebas normales, 8 pruebas PostgreSQL y
+4 pruebas de sesión frontend aprobadas; compilaciones real y simulada aprobadas.
+Gradle build y contrato clínico sobre PostgreSQL 18.6 desechable,
+con Flyway desde una base vacía y repetición sin migraciones pendientes. El perfil
+normal usa H2; no sustituye las pruebas PostgreSQL. Compose conserva PostgreSQL 16
+para validación en CI. No se ha realizado una aceptación visual completa en navegador.

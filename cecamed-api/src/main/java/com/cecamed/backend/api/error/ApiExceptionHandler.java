@@ -95,7 +95,9 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(BusinessRuleException.class)
     ProblemDetail handleBusinessRule(BusinessRuleException exception, WebRequest request) {
-        return problem(HttpStatus.CONFLICT, exception.getCode(), exception.getMessage(), request);
+        var status = exception.getCode().equals("PATIENT_NOT_FOUND") ? HttpStatus.NOT_FOUND
+                : exception.getCode().equals("PATIENT_FUTURE_BIRTH_DATE") ? HttpStatus.BAD_REQUEST : HttpStatus.CONFLICT;
+        return problem(status, exception.getCode(), exception.getMessage(), request);
     }
 
     @Override
@@ -115,6 +117,16 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         var problem = problem(status, "HTTP_" + status.value(),
                 "No se pudo procesar la solicitud.", request);
         return new ResponseEntity<>(problem, headers, status);
+    }
+
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+    ProblemDetail handleStale(Exception exception, WebRequest request) {
+        return problem(HttpStatus.CONFLICT, "STALE_VERSION", "Los datos cambiaron. Recargue antes de editar.", request);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    ProblemDetail handleInput(IllegalArgumentException exception, WebRequest request) {
+        return problem(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", exception.getMessage(), request);
     }
 
     @ExceptionHandler(Exception.class)

@@ -114,7 +114,12 @@ async function api(req, res, url) {
     const u = USERS[(body?.username ?? '').trim().toLowerCase()];
     if (!u || u.password !== body.password.trim()) return err(res, 401, 'Credenciales incorrectas. Verifique su usuario y contraseña.', p);
     const s = sessionFromToken(`mock-${body.username.trim().toLowerCase()}`);
-    return send(res, 200, { ...s, accessToken: `mock-${s.username}` });
+    return send(res, 200, { ...s, accessToken: `mock-${s.username}`, refreshToken: `mock-${s.username}` });
+  }
+  if (p === '/api/auth/logout') return send(res, 204);
+  if (p === '/api/auth/refresh') {
+    const session = sessionFromToken(body?.refreshToken ?? '');
+    return session ? send(res, 200, { accessToken: `mock-${session.username}`, refreshToken: `mock-${session.username}` }) : err(res, 401, 'Sesión expirada', p);
   }
   // Igual que en cecamed-api, /system/info es público.
   if (p === '/api/system/info') return send(res, 200, { name: 'cecamed-backend (API simulada)', version: '0.1.0-SNAPSHOT', apiVersion: 'v1', googleCalendarEnabled: false });
@@ -134,28 +139,59 @@ async function api(req, res, url) {
     const term = (url.searchParams.get('search') ?? '').toLowerCase(); const st = url.searchParams.get('status') ?? 'ACTIVE';
     let list = patients.filter((x) => !term || x.fullName.toLowerCase().includes(term) || (x.phone ?? '').includes(term));
     if (st === 'ACTIVE') list = list.filter((x) => x.active); if (st === 'INACTIVE') list = list.filter((x) => !x.active);
-    return send(res, 200, list.sort((a, b) => a.lastName.localeCompare(b.lastName)));
+    list.sort((a, b) => a.id - b.id);
+    const page = Math.max(0, Number(url.searchParams.get('page') ?? 0));
+    const size = Math.min(100, Math.max(1, Number(url.searchParams.get('size') ?? 20)));
+    return send(res, 200, { content: list.slice(page * size, (page + 1) * size).map((x) => ({ version: 0, ...x })), page, size, totalElements: list.length, totalPages: Math.ceil(list.length / size) });
   }
   if (p === '/api/patients' && m === 'POST') {
     if (patients.some((x) => x.firstName.toLowerCase() === body.firstName.toLowerCase() && x.lastName.toLowerCase() === body.lastName.toLowerCase() && x.birthDate === body.birthDate))
       return err(res, 422, 'Ya existe un paciente con los mismos nombres, apellidos y fecha de nacimiento. Revise el registro existente, incluidos los pacientes inactivos.', p);
-    const np = { ...body, id: ++seq, fullName: `${body.firstName} ${body.lastName}`, age: now().getFullYear() - Number(body.birthDate.slice(0, 4)), active: true, medicalRecordNumber: `EXP-2026-${seq}00` };
-    patients.push(np); records[np.id] = { id: np.id, patientId: np.id, recordNumber: np.medicalRecordNumber };
+    const np = { ...body, version: 0, createdAt: iso(now()), updatedAt: iso(now()), id: ++seq, fullName: `${body.firstName} ${body.lastName}`, age: now().getFullYear() - Number(body.birthDate.slice(0, 4)), active: true, medicalRecordNumber: `EXP-2026-${seq}00` };
+    patients.push(np); records[np.id] = { version: 0, id: np.id, patientId: np.id, recordNumber: np.medicalRecordNumber };
     return send(res, 201, np);
   }
   if ((mm = p.match(/^\/api\/patients\/(\d+)$/))) {
     const pt = patients.find((x) => x.id === +mm[1]); if (!pt) return err(res, 404, `Paciente no encontrado con id: '${mm[1]}'`, p);
-    if (m === 'PUT') Object.assign(pt, body, { fullName: `${body.firstName} ${body.lastName}` });
-    return send(res, 200, pt);
+    if (m === 'PUT') {
+      if (body.version !== (pt.version ?? 0)) return err(res, 409, 'El paciente cambió', p);
+      Object.assign(pt, body, { version: (pt.version ?? 0) + 1, fullName: `${body.firstName} ${body.lastName}` });
+    }
+    return send(res, 200, { version: 0, ...pt });
   }
   if ((mm = p.match(/^\/api\/patients\/(\d+)\/(activate|deactivate)$/))) { patients.find((x) => x.id === +mm[1]).active = mm[2] === 'activate'; return send(res, 204); }
   if ((mm = p.match(/^\/api\/patients\/(\d+)\/appointments$/))) return send(res, 200, appointments.filter((a) => a.patientId === +mm[1]).sort((a, b) => b.startTime.localeCompare(a.startTime)));
-  if ((mm = p.match(/^\/api\/patients\/(\d+)\/medical-record$/))) { if (m === 'PUT') records[+mm[1]] = { ...records[+mm[1]], ...body }; return send(res, 200, records[+mm[1]]); }
-  if ((mm = p.match(/^\/api\/patients\/(\d+)\/consultations$/))) return send(res, 200, consultations.filter((c) => c.patientId === +mm[1]).sort((a, b) => b.consultationDateTime.localeCompare(a.consultationDateTime)));
-  if (p === '/api/consultations' && m === 'POST') {
-    const v = body.vitalSigns; const bmi = v.weightKg && v.heightCm ? +(v.weightKg / (v.heightCm / 100) ** 2).toFixed(2) : null;
-    const c = { ...body, id: ++seq, vitalSigns: { ...v, bmi }, patientFullName: patients.find((x) => x.id === body.patientId).fullName, attachedDocuments: [] };
-    consultations.push(c); return send(res, 201, c);
+  if ((mm = p.match(/^\/api\/patients\/(\d+)\/medical-record$/))) {
+    const record = records[+mm[1]];
+    if (!record) return err(res, 404, 'Expediente no encontrado', p);
+    if (m === 'PUT') {
+      if (body.version !== (record.version ?? 0)) return err(res, 409, 'El expediente cambió', p);
+      records[+mm[1]] = { ...record, ...body, version: (record.version ?? 0) + 1 };
+    }
+    return send(res, 200, { version: 0, ...records[+mm[1]] });
+  }
+  if ((mm = p.match(/^\/api\/patients\/(\d+)\/consultations\/(\d+)$/))) {
+    const c = consultations.find((x) => x.patientId === +mm[1] && (x.consultationId ?? x.id) === +mm[2]);
+    if (!c) return err(res, 404, 'Consulta no encontrada', p);
+    if (m === 'PUT') {
+      if (body.version !== (c.version ?? 0)) return err(res, 409, 'La consulta cambió', p);
+      Object.assign(c, body, { version: (c.version ?? 0) + 1, updatedAt: iso(now()) });
+    }
+    return send(res, 200, { ...c, consultationId: c.consultationId ?? c.id, consultationDate: c.consultationDate ?? c.consultationDateTime });
+  }
+  if ((mm = p.match(/^\/api\/patients\/(\d+)\/consultations$/))) {
+    const patientId = +mm[1];
+    if (!patients.some((x) => x.id === patientId)) return err(res, 404, 'Paciente no encontrado', p);
+    if (m === 'POST') {
+      const c = { ...body, consultationId: ++seq, patientId, consultationDate: iso(now()), createdAt: iso(now()), updatedAt: iso(now()), version: 0 };
+      consultations.push(c);
+      return send(res, 201, c);
+    }
+    return send(res, 200, consultations.filter((c) => c.patientId === patientId).map((c) => c.consultationId ? c : ({
+      ...c, consultationId: c.id, consultationDate: c.consultationDateTime,
+      reasonForVisit: c.reason, examinationFindings: c.physicalExamination,
+      notes: c.privateNotes, vitalSigns: JSON.stringify(c.vitalSigns), version: 0,
+    })));
   }
   if ((mm = p.match(/^\/api\/patients\/(\d+)\/documents$/))) {
     if (m === 'POST') { const d = { id: ++seq, patientId: +mm[1], fileName: 'x', originalFileName: (raw.match(/filename="([^"]+)"/) ?? [])[1] ?? 'archivo', fileType: 'application/pdf', documentType: (raw.match(/name="documentType"\r\n\r\n(\w+)/) ?? [])[1], fileSizeBytes: raw.length, description: (raw.match(/name="description"\r\n\r\n([^\r]+)/) ?? [])[1] ?? null, createdAt: iso(now()) }; documents.push(d); return send(res, 201, d); }

@@ -25,6 +25,7 @@ const TABS: { id: Tab; label: string }[] = [
 /** Equivalente de settings.fxml / SettingsController. */
 export function SettingsPage() {
   const [tab, setTab] = useState<Tab>('appearance');
+  const { user } = useAuth();
   return (
     <div className="page">
       <PageHeader
@@ -32,7 +33,7 @@ export function SettingsPage() {
         subtitle="Apariencia, horarios de atención y bloqueos de agenda"
       />
       <div className="tabs" role="tablist">
-        {TABS.map((t) => (
+        {TABS.filter((t) => user?.role !== 'ADMIN' || t.id === 'appearance' || t.id === 'system').map((t) => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
             {t.label}
           </button>

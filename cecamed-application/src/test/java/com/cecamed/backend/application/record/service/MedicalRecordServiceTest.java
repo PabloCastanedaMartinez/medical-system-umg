@@ -34,7 +34,7 @@ class MedicalRecordServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        medicalRecordService = new MedicalRecordService(medicalRecordRepository);
+        medicalRecordService = new MedicalRecordService(medicalRecordRepository, java.time.Clock.fixed(Instant.parse("2026-10-16T11:00:00Z"), java.time.ZoneOffset.UTC));
     }
 
     @Test

@@ -17,7 +17,6 @@ import {
   parseDecimalOrNull,
   parseIntOrNull,
   toIsoDate,
-  toIsoDateTime,
 } from '../utils/format';
 import { BLOOD_TYPE_SHORT, GENDER_LABEL } from '../utils/labels';
 import { DocumentsTab } from './DocumentsTab';
@@ -106,6 +105,8 @@ export function MedicalRecordPage() {
   const appointmentsQuery = useApi<Appointment[]>(() => patientsApi.appointments(patientId), [patientId], validId);
   const { data: patientOptions } = useApi(() => patientsApi.list('', 'ACTIVE'), []);
 
+  const [editingConsultation, setEditingConsultation] = useState<Consultation | null>(null);
+  useEffect(() => setEditingConsultation(null), [patientId]);
   const record = recordQuery.data;
   const consultations = consultationsQuery.data;
 
@@ -256,7 +257,7 @@ export function MedicalRecordPage() {
 
       <div className="tabs" role="tablist" aria-label="Secciones del expediente">
         {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
+          <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'active' : ''} onClick={() => { if (t.id === 'newConsultation') setEditingConsultation(null); setTab(t.id); }}>
             {t.label}
           </button>
         ))}
@@ -301,13 +302,17 @@ export function MedicalRecordPage() {
             consultations={consultations ?? []}
             selected={selectedConsultation}
             onSelect={setSelectedConsultationId}
-            onNew={() => setTab('newConsultation')}
+            onNew={() => { setEditingConsultation(null); setTab('newConsultation'); }}
+            onEdit={(c) => { setEditingConsultation(c); setTab('newConsultation'); }}
           />
         ) : tab === 'newConsultation' ? (
           <NewConsultationTab
+            key={`${patientId}-${editingConsultation?.id ?? 'new'}`}
+            initial={editingConsultation}
             patientId={patientId}
             onCreated={(created) => {
-              consultationsQuery.setData((prev) => [created, ...(prev ?? [])]);
+              consultationsQuery.setData((prev) => [created, ...(prev ?? []).filter((c) => c.id !== created.id)]);
+              setEditingConsultation(null);
               setSelectedConsultationId(created.id);
               setTab('consultations');
             }}
@@ -327,11 +332,13 @@ function ConsultationsTab({
   selected,
   onSelect,
   onNew,
+  onEdit,
 }: {
   consultations: Consultation[];
   selected: Consultation | null;
   onSelect: (id: number) => void;
   onNew: () => void;
+  onEdit: (c: Consultation) => void;
 }) {
   if (consultations.length === 0) {
     return (
@@ -384,6 +391,7 @@ function ConsultationsTab({
       {selected && (
         <aside className="consultation-detail">
           <h3 className="section-title">Detalle de la consulta</h3>
+          <button className="btn btn-ghost" onClick={() => onEdit(selected)}>Editar consulta</button>
           <dl className="detail-list">
             <dt>Fecha</dt>
             <dd>{formatDateTime(selected.consultationDateTime)}</dd>
@@ -447,9 +455,17 @@ const EMPTY_CONSULTATION = {
   privateNotes: '',
 };
 
-function NewConsultationTab({ patientId, onCreated }: { patientId: number; onCreated: (c: Consultation) => void }) {
+function NewConsultationTab({ patientId, initial, onCreated }: { patientId: number; initial: Consultation | null; onCreated: (c: Consultation) => void }) {
   const toast = useToast();
-  const [form, setForm] = useState({ ...EMPTY_CONSULTATION, date: toIsoDate(clinicNow()) });
+  const [form, setForm] = useState(() => initial ? {
+    ...EMPTY_CONSULTATION, reason: initial.reason, symptoms: initial.symptoms ?? '',
+    physicalExamination: initial.physicalExamination ?? '', diagnosis: initial.diagnosis,
+    icd10: initial.icd10Code ?? '', treatment: initial.treatmentPlan ?? '', privateNotes: initial.privateNotes ?? '',
+    systolic: String(initial.vitalSigns?.systolicPressure ?? ''), diastolic: String(initial.vitalSigns?.diastolicPressure ?? ''),
+    heartRate: String(initial.vitalSigns?.heartRate ?? ''), respiratoryRate: String(initial.vitalSigns?.respiratoryRate ?? ''),
+    temperature: String(initial.vitalSigns?.temperatureCelsius ?? ''), weight: String(initial.vitalSigns?.weightKg ?? ''),
+    height: String(initial.vitalSigns?.heightCm ?? ''), spo2: String(initial.vitalSigns?.oxygenSaturationPercentage ?? ''),
+  } : { ...EMPTY_CONSULTATION });
   const [saving, setSaving] = useState(false);
   const set = (key: keyof typeof EMPTY_CONSULTATION, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -465,13 +481,8 @@ function NewConsultationTab({ patientId, onCreated }: { patientId: number; onCre
       document.getElementById('nc-diagnosis')?.focus();
       return;
     }
-    const now = clinicNow();
-    const [y, m, d] = (form.date || toIsoDate(now)).split('-').map(Number);
-    const consultationDate = new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds());
-
     const body: ConsultationRequest = {
       patientId,
-      consultationDateTime: toIsoDateTime(consultationDate),
       reason: form.reason.trim(),
       symptoms: blankToNull(form.symptoms),
       physicalExamination: blankToNull(form.physicalExamination),
@@ -493,8 +504,10 @@ function NewConsultationTab({ patientId, onCreated }: { patientId: number; onCre
 
     setSaving(true);
     try {
-      const created = await medicalRecordApi.createConsultation(body);
-      toast.success('Consulta guardada', 'La consulta médica fue registrada exitosamente');
+      const created = initial
+        ? await medicalRecordApi.updateConsultation(initial, body)
+        : await medicalRecordApi.createConsultation(body);
+      toast.success('Consulta guardada', initial ? 'Cambios guardados' : 'La consulta médica fue registrada exitosamente');
       setForm({ ...EMPTY_CONSULTATION, date: toIsoDate(clinicNow()) });
       onCreated(created);
     } catch (err) {
@@ -515,9 +528,6 @@ function NewConsultationTab({ patientId, onCreated }: { patientId: number; onCre
       <fieldset className="form-section" disabled={saving}>
         <legend>Datos de la consulta</legend>
         <div className="form-grid">
-          <Field label="Fecha de la consulta" htmlFor="nc-date" required>
-            <input id="nc-date" type="date" max={toIsoDate(clinicNow())} value={form.date} onChange={(e) => set('date', e.target.value)} />
-          </Field>
           <Field label="Motivo de la consulta" htmlFor="nc-reason" required>
             <input id="nc-reason" maxLength={255} placeholder="ej. Control rutinario de hipertensión, fiebre de 3 días..." value={form.reason} onChange={(e) => set('reason', e.target.value)} />
           </Field>
@@ -565,7 +575,7 @@ function NewConsultationTab({ patientId, onCreated }: { patientId: number; onCre
 
       <div className="form-actions">
         <button type="submit" className="btn btn-primary" disabled={saving}>
-          {saving ? <Spinner size={16} /> : <FileText size={16} aria-hidden />} Registrar consulta
+          {saving ? <Spinner size={16} /> : <FileText size={16} aria-hidden />} {initial ? 'Guardar cambios' : 'Registrar consulta'}
         </button>
       </div>
     </form>

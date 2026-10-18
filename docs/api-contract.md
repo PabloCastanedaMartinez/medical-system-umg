@@ -132,3 +132,62 @@ Todos los errores de la API se responden con el content-type `application/proble
 | 404 | `USER_NOT_FOUND` | Usuario no encontrado en administración |
 | 409 | `USERNAME_ALREADY_EXISTS` | Intento de registrar un nombre de usuario que ya existe |
 | 500 | `INTERNAL_ERROR` | Error interno del servidor sin exponer detalles sensibles |
+
+## Pacientes, expediente y consultas — incremento 1
+
+Los IDs son numéricos. `createdAt`, `updatedAt` y `consultationDate` son instantes
+ISO-8601 UTC; la interfaz los muestra en America/Guatemala. `birthDate` es una
+fecha civil `YYYY-MM-DD`, obligatoria y no futura en Guatemala.
+
+| Ruta relativa a `/api/v1` | Contrato | Rol |
+| --- | --- | --- |
+| `GET /patients?search=&status=ACTIVE&page=0&size=20` | `{content, page, size, totalElements, totalPages}`; tamaño máximo 100; status ACTIVE/INACTIVE/ALL | MEDICO, RECEPCION |
+| `POST /patients` | 201 + Location; crea también expediente vacío de forma atómica | MEDICO, RECEPCION |
+| `GET /patients/{id}` | Paciente con `version`, timestamps y número de expediente | MEDICO, RECEPCION |
+| `PUT /patients/{id}` | Datos completos editables + `version` leída | MEDICO, RECEPCION |
+| `PATCH /patients/{id}/activate?version=0` | 204; idem `/deactivate` | MEDICO, RECEPCION |
+| `GET /patients/{id}/medical-record` | Expediente con `version` | MEDICO |
+| `PUT /patients/{id}/medical-record` | Campos editables + `version`; 200 con nueva versión | MEDICO |
+| `GET /patients/{id}/consultations` | Array de consultas, más recientes primero | MEDICO |
+| `POST /patients/{id}/consultations` | 201 + Location; ID y fechas generados por servidor | MEDICO |
+| `GET /patients/{id}/consultations/{consultationId}` | Detalle; 404 si pertenece a otro paciente | MEDICO |
+| `PUT /patients/{id}/consultations/{consultationId}` | Campos editables + `version`; 200 con nueva versión | MEDICO |
+
+Alta mínima de paciente:
+
+```json
+{"firstName":"Ana","lastName":"López","birthDate":"2000-01-02","gender":"FEMENINO","bloodType":"DESCONOCIDO"}
+```
+
+`identificationNumber` es opcional al crear y se normaliza; cuando existe es único.
+No se modifica con la edición demográfica. Los campos opcionales son teléfono,
+email, dirección, contacto de emergencia y notas. No se acepta una versión ausente
+al editar. La búsqueda interpreta `%` y `_` literalmente y combina el filtro de
+estado con nombre completo, identificación, teléfono, email y número de expediente.
+
+Alta mínima de consulta:
+
+```json
+{"consultationType":"GENERAL","doctorName":"Dra. López","reasonForVisit":"Control","diagnosis":"Evaluación general","icd10Code":"Z00","vitalSigns":"{\"heartRate\":70}"}
+```
+
+Campos adicionales: `symptoms`, `examinationFindings`, `treatmentPlan`,
+`prescriptions`, `followUpInstructions`, `notes`. `vitalSigns` es texto que el
+cliente web serializa como JSON de signos vitales; el adaptador frontend traduce
+los nombres de presentación `reason`, `physicalExamination`, `privateNotes` e `id`
+a `reasonForVisit`, `examinationFindings`, `notes` y `consultationId` del contrato.
+La respuesta añade `patientId`, `consultationDate`, `createdAt`, `updatedAt` y
+`version`. El paciente debe existir y estar activo al crear una consulta.
+
+PUT reemplaza los campos editables; un valor opcional nulo borra ese dato.
+Los IDs, fecha de consulta y fecha de creación no cambian al editar. La versión
+leída se envía en cada edición y cambio de estado: 400 si falta, 409 si quedó
+obsoleta, incluso con peticiones concurrentes. Se devuelve la nueva versión
+después de persistir. El cliente conserva el formulario al recibir un conflicto;
+no debe reintentar automáticamente sobrescribiendo con la versión nueva.
+
+Los permisos se comprueban en el servidor. ADMIN no tiene acceso clínico.
+Firma/enmiendas, documentos y agenda pertenecen al incremento 2. `filePath` no
+forma parte de ningún tipo público del frontend; la descarga usará el cliente
+HTTP común al integrar documentos. El simulador es demostrativo y no acredita
+la persistencia ni las reglas de los módulos pendientes.

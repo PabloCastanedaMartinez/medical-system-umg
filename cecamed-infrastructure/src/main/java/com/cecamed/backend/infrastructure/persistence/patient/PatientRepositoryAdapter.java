@@ -41,7 +41,13 @@ public class PatientRepositoryAdapter implements PatientRepositoryPort {
     public Patient save(Patient patient) {
         try {
             PatientJpaEntity entity = PatientJpaEntity.fromDomain(patient);
-            PatientJpaEntity saved = repository.save(entity);
+            PatientJpaEntity saved = repository.saveAndFlush(entity);
+            if (patient.getId() == null) {
+                entityManager.persist(new com.cecamed.backend.infrastructure.persistence.record.MedicalRecordJpaEntity(
+                    saved.getId(), saved.getMedicalRecordNumber(), null, null, null, null, null, null,
+                    null, null, null, null, null, saved.getCreatedAt(), saved.getUpdatedAt(), null));
+                entityManager.flush();
+            }
             return saved.toDomain();
         } catch (OptimisticLockingFailureException ex) {
             throw new StaleVersionException("Conflicto de versión al actualizar el paciente. Por favor, inténtelo de nuevo.");
@@ -85,29 +91,14 @@ public class PatientRepositoryAdapter implements PatientRepositoryPort {
         CriteriaQuery<PatientJpaEntity> cq = cb.createQuery(PatientJpaEntity.class);
         Root<PatientJpaEntity> root = cq.from(PatientJpaEntity.class);
 
-        // Construir predicados
-        Predicate conjunction = cb.conjunction();
-        if (active != null) {
-            conjunction.getExpressions().add(cb.equal(root.get("active"), active));
-        }
-        if (searchTerm != null && !searchTerm.isEmpty()) {
-            String likePattern = "%" + searchTerm.toUpperCase() + "%";
-            Predicate namePredicate = cb.or(
-                    cb.like(cb.upper(root.get("identificationNumber")), likePattern),
-                    cb.like(cb.upper(root.get("firstName")), likePattern),
-                    cb.like(cb.upper(root.get("lastName")), likePattern),
-                    cb.like(cb.upper(root.get("phone")), likePattern),
-                    cb.like(cb.upper(root.get("email")), likePattern)
-            );
-            conjunction.getExpressions().add(namePredicate);
-        }
-        cq.where(conjunction);
+        cq.where(filters(cb, root, searchTerm, active));
         cq.orderBy(cb.asc(root.get("id"))); // ordenar por ID para consistencia
 
         // Contar total de elementos
         CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
-        countQuery.select(cb.count(countQuery.from(PatientJpaEntity.class)));
-        countQuery.where(cq.getRestriction());
+        var countRoot = countQuery.from(PatientJpaEntity.class);
+        countQuery.select(cb.count(countRoot));
+        countQuery.where(filters(cb, countRoot, searchTerm, active));
         Long totalElements = entityManager.createQuery(countQuery).getSingleResult();
 
         // Ejecutar consulta de página
@@ -124,5 +115,17 @@ public class PatientRepositoryAdapter implements PatientRepositoryPort {
 
         int totalPages = (int) Math.ceil((double) totalElements / size);
         return new PagedResult<>(patients, page, size, totalElements, totalPages);
+    }
+
+    private Predicate filters(CriteriaBuilder cb, Root<PatientJpaEntity> root, String search, Boolean active) {
+        var predicates = new ArrayList<Predicate>();
+        if (active != null) predicates.add(cb.equal(root.get("active"), active));
+        if (search != null && !search.isBlank()) {
+            String pattern = "%" + search.toUpperCase(java.util.Locale.ROOT)
+                .replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
+            predicates.add(cb.or(java.util.stream.Stream.of("identificationNumber", "fullName", "phone", "email", "medicalRecordNumber")
+                .map(field -> cb.like(cb.upper(root.<String>get(field)), pattern, '!')).toArray(Predicate[]::new)));
+        }
+        return cb.and(predicates.toArray(Predicate[]::new));
     }
 }
