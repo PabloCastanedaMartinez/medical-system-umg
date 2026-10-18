@@ -9,6 +9,7 @@ import java.util.Optional;
  * Puerto de salida para la persistencia de pacientes.
  */
 public interface PatientRepositoryPort {
+    Patient saveNew(Patient patient, String allergies);
 
     Optional<Patient> findById(Long id);
 

@@ -21,7 +21,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import tools.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -29,9 +29,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final TokenValidatorPort tokenValidator;
-    private final JsonMapper jsonMapper;
+    private final ObjectMapper jsonMapper;
 
-    public JwtAuthenticationFilter(TokenValidatorPort tokenValidator, JsonMapper jsonMapper) {
+    public JwtAuthenticationFilter(TokenValidatorPort tokenValidator, ObjectMapper jsonMapper) {
         this.tokenValidator = Objects.requireNonNull(tokenValidator);
         this.jsonMapper = Objects.requireNonNull(jsonMapper);
     }

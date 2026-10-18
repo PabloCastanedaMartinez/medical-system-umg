@@ -21,7 +21,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import tools.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class JwtTokenService implements TokenIssuerPort, TokenValidatorPort {
@@ -36,7 +36,7 @@ public class JwtTokenService implements TokenIssuerPort, TokenValidatorPort {
     private final int accessTokenExpirationMinutes;
     private final int refreshTokenExpirationDays;
     private final Clock clock;
-    private final JsonMapper jsonMapper;
+    private final ObjectMapper jsonMapper;
     private final SecureRandom secureRandom;
 
     public JwtTokenService(
@@ -44,7 +44,7 @@ public class JwtTokenService implements TokenIssuerPort, TokenValidatorPort {
             @Value("${cecamed.security.jwt.access-token-expiration-minutes:15}") int accessTokenExpirationMinutes,
             @Value("${cecamed.security.jwt.refresh-token-expiration-days:7}") int refreshTokenExpirationDays,
             Clock clock,
-            JsonMapper jsonMapper) {
+            ObjectMapper jsonMapper) {
         Objects.requireNonNull(secret, "secret no puede ser nulo");
         byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
         if (bytes.length < 32) {

@@ -13,7 +13,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import tools.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 class JwtTokenServiceTest {
 
@@ -22,13 +22,13 @@ class JwtTokenServiceTest {
     private static final Instant FIXED_NOW = Instant.parse("2026-10-17T10:00:00Z");
 
     private MutableClock clock;
-    private JsonMapper jsonMapper;
+    private ObjectMapper jsonMapper;
     private JwtTokenService tokenService;
 
     @BeforeEach
     void setUp() {
         clock = new MutableClock(FIXED_NOW);
-        jsonMapper = JsonMapper.builder().build();
+        jsonMapper = new ObjectMapper();
         tokenService = new JwtTokenService(SECRET_KEY, 15, 7, clock, jsonMapper);
     }
 

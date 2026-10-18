@@ -22,7 +22,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import tools.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Configuration(proxyBeanMethods = false)
 @EnableMethodSecurity
@@ -31,7 +31,7 @@ public class SecurityConfiguration {
     @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            JsonMapper jsonMapper,
+            ObjectMapper jsonMapper,
             JwtAuthenticationFilter jwtAuthenticationFilter,
             @Value("${cecamed.api-docs-public:false}") boolean publicDocs) throws Exception {
         return http
@@ -75,20 +75,23 @@ public class SecurityConfiguration {
                     authorize.requestMatchers(HttpMethod.POST, "/api/v1/patients/{patientId}/consultations/{id}/sign").hasRole("MEDICO");
                     authorize.requestMatchers(HttpMethod.POST, "/api/v1/patients/{patientId}/consultations/{id}/amendments").hasRole("MEDICO");
                     // Document endpoints
+                    authorize.requestMatchers(HttpMethod.GET, "/api/v1/documents/{id}/file").hasRole("MEDICO");
+                    authorize.requestMatchers(HttpMethod.DELETE, "/api/v1/documents/{id}").hasRole("MEDICO");
                     authorize.requestMatchers(HttpMethod.GET, "/api/v1/patients/{patientId}/documents").hasRole("MEDICO");
                     authorize.requestMatchers(HttpMethod.POST, "/api/v1/patients/{patientId}/documents").hasRole("MEDICO");
                     authorize.requestMatchers(HttpMethod.GET, "/api/v1/patients/{patientId}/documents/{id}/content").hasRole("MEDICO");
                     authorize.requestMatchers(HttpMethod.POST, "/api/v1/patients/{patientId}/documents/{id}/deactivate").hasRole("MEDICO");
-                    // Legacy endpoints (to be reviewed)
-                    authorize.requestMatchers(
-                            "/api/v1/patients/**",
-                            "/api/v1/appointments/**",
-                            "/api/v1/medical-records/**",
-                            "/api/v1/consultations/**",
-                            "/api/v1/documents/**",
-                            "/api/v1/schedules/**",
-                            "/api/v1/schedule-blocks/**",
-                            "/api/v1/dashboard/**").hasAnyRole("MEDICO", "RECEPCION");
+                    authorize.requestMatchers("/api/v1/portal/**").hasRole("PACIENTE");
+                    authorize.requestMatchers(HttpMethod.GET, "/api/v1/doctors/me/agenda").hasRole("MEDICO");
+                    authorize.requestMatchers(HttpMethod.GET, "/api/v1/doctors", "/api/v1/schedules",
+                            "/api/v1/appointments/available-slots").hasAnyRole("MEDICO", "RECEPCION", "ADMIN", "PACIENTE");
+                    authorize.requestMatchers("/api/v1/doctors/**", "/api/v1/schedules/**",
+                            "/api/v1/schedule-blocks/**").hasAnyRole("RECEPCION", "ADMIN");
+                    authorize.requestMatchers(HttpMethod.GET, "/api/v1/appointments", "/api/v1/patients/*/appointments",
+                            "/api/v1/dashboard/summary").hasAnyRole("MEDICO", "RECEPCION", "ADMIN");
+                    authorize.requestMatchers("/api/v1/appointments/**").hasAnyRole("RECEPCION", "ADMIN");
+                    authorize.requestMatchers("/api/v1/patients/*/portal-access").hasAnyRole("RECEPCION", "ADMIN");
+                    authorize.requestMatchers("/api/v1/patients/**").hasAnyRole("MEDICO", "RECEPCION", "ADMIN");
                     authorize.anyRequest().denyAll();
                 })
                 .build();
@@ -110,7 +113,7 @@ public class SecurityConfiguration {
     private static void writeProblem(
             HttpServletRequest request,
             HttpServletResponse response,
-            JsonMapper mapper,
+            ObjectMapper mapper,
             HttpStatus status,
             String code,
             String detail) throws IOException {

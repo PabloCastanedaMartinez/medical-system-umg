@@ -1,6 +1,6 @@
 plugins {
     base
-    id("org.springframework.boot") version "4.1.1" apply false
+    id("org.springframework.boot") version "3.5.16" apply false
 }
 
 allprojects {
@@ -17,6 +17,7 @@ subprojects {
 
     configure<JavaPluginExtension> {
         toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+        toolchain.vendor.set(JvmVendorSpec.BELLSOFT)
     }
 
     dependencies {

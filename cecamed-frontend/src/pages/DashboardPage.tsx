@@ -17,7 +17,7 @@ function greeting(date: Date): string {
 
 /** Inicio: resumen del día y citas de hoy (dashboard.fxml / DashboardController). */
 export function DashboardPage() {
-  const { user } = useAuth();
+  const { user, isMedico } = useAuth();
   const navigate = useNavigate();
   const { data, loading, error, reload } = useApi(() => dashboardApi.summary(), []);
   const today = clinicNow();
@@ -32,9 +32,9 @@ export function DashboardPage() {
             <button className="btn btn-secondary" onClick={() => navigate('/pacientes?nuevo=1')}>
               Registrar paciente
             </button>
-            <button className="btn btn-primary" onClick={() => navigate('/agenda?nueva=1')}>
+            {!isMedico && <button className="btn btn-primary" onClick={() => navigate('/agenda?nueva=1')}>
               Nueva cita
-            </button>
+            </button>}
           </>
         }
       />
@@ -52,7 +52,7 @@ export function DashboardPage() {
         <div className="card-header">
           <h2>Citas de hoy</h2>
           <span className="card-header-links">
-            <Link to="/recepcion" className="link">Ir a recepción</Link>
+            {!isMedico && <Link to="/recepcion" className="link">Ir a recepción</Link>}
             <Link to="/agenda" className="link">Ver agenda completa</Link>
           </span>
         </div>
@@ -86,7 +86,7 @@ export function DashboardPage() {
             </table>
           </div>
         ) : (
-          <EmptyState icon={CalendarDays} message="No hay citas para hoy. Puede agendar una con el botón Nueva cita." />
+          <EmptyState icon={CalendarDays} message="No hay citas registradas para hoy." />
         )}
       </section>
     </div>

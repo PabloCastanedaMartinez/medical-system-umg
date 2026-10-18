@@ -129,6 +129,18 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", exception.getMessage(), request);
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    ProblemDetail handleIntegrity(org.springframework.dao.DataIntegrityViolationException exception, WebRequest request) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof java.sql.SQLException sql && "23P01".equals(sql.getSQLState())) {
+                return problem(HttpStatus.CONFLICT, "APPOINTMENT_SLOT_OCCUPIED",
+                        "El médico ya tiene una cita en ese horario. Seleccione otro.", request);
+            }
+        }
+        return problem(HttpStatus.CONFLICT, "DATA_CONFLICT",
+                "Los datos ya están registrados o tienen referencias que impiden la operación.", request);
+    }
+
     @ExceptionHandler(Exception.class)
     ProblemDetail handleUnexpected(Exception exception, WebRequest request) {
         log.error("Error inesperado al procesar una solicitud", exception);

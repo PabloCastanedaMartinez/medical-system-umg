@@ -69,16 +69,17 @@ public class PatientController {
      * @param request datos del paciente a crear
      * @return respuesta con el paciente creado y encabezado Location
      */
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping
     public ResponseEntity<PatientResponse> createPatient(
-            @Valid @RequestBody PatientRequest request, java.security.Principal principal, jakarta.servlet.http.HttpServletRequest http) {
+            @org.springframework.validation.annotation.Validated({jakarta.validation.groups.Default.class, PatientRequest.OnCreate.class}) @RequestBody PatientRequest request, java.security.Principal principal, jakarta.servlet.http.HttpServletRequest http) {
 
         String performedBy = principal.getName();
         String ipAddress = http.getRemoteAddr();
         String userAgent = http.getHeader("User-Agent");
 
         PatientResponse created = patientUseCase.createPatient(request, performedBy, ipAddress, userAgent);
-        URI location = URI.create("/api/v1/patients/" + created.getId());
+        URI location = URI.create("/api/v1/patients/" + created.id());
         return ResponseEntity.created(location).body(created);
     }
 
@@ -98,7 +99,7 @@ public class PatientController {
         String ipAddress = http.getRemoteAddr();
         String userAgent = http.getHeader("User-Agent");
 
-        if (request.getVersion() == null) throw new IllegalArgumentException("Se requiere version para editar.");
+        if (request.version() == null) throw new IllegalArgumentException("Se requiere version para editar.");
         PatientResponse updated = patientUseCase.updatePatient(id, request, performedBy, ipAddress, userAgent);
         return ResponseEntity.ok(updated);
     }

@@ -363,7 +363,8 @@ function ConsultationsTab({
           <thead>
             <tr>
               <th>Fecha/Hora</th>
-              <th>Motivo</th>
+              <th>Médico</th>
+            <th>Motivo</th>
               <th>Diagnóstico</th>
               <th>CIE-10</th>
             </tr>
@@ -593,6 +594,7 @@ function AppointmentsHistory({ appointments }: { appointments: Appointment[] }) 
           <tr>
             <th>Fecha</th>
             <th>Hora</th>
+            <th>Médico</th>
             <th>Motivo</th>
             <th>Estado</th>
           </tr>
@@ -602,6 +604,7 @@ function AppointmentsHistory({ appointments }: { appointments: Appointment[] }) 
             <tr key={a.id}>
               <td className="nowrap">{formatDate(a.startTime)}</td>
               <td className="mono nowrap">{formatTime(a.startTime)}</td>
+              <td>{a.doctorName}</td>
               <td>{a.reasonForVisit ?? '-'}</td>
               <td>
                 <AppointmentStatusBadge status={a.status} />

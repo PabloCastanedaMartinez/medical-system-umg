@@ -22,6 +22,9 @@ const NAV: NavItem[] = [
   { to: '/expediente', label: 'Expediente clínico', medicoOnly: true },
   { to: '/agenda', label: 'Agenda' },
   { to: '/recepcion', label: 'Recepción' },
+  { to: '/medicos', label: 'Médicos' },
+  { to: '/usuarios', label: 'Usuarios' },
+  { to: '/mis-citas', label: 'Mis citas' },
   { to: '/configuracion', label: 'Configuración' },
 ];
 
@@ -32,6 +35,9 @@ const TITLES: Record<string, string> = {
   '/agenda': 'Agenda',
   '/recepcion': 'Recepción',
   '/configuracion': 'Configuración',
+  '/medicos': 'Médicos',
+  '/usuarios': 'Usuarios',
+  '/mis-citas': 'Mis citas',
 };
 
 /** Estructura principal: barra superior con la navegación (equivale a main-layout.fxml). */
@@ -56,7 +62,13 @@ export function MainLayout() {
     navigate('/login', { replace: true });
   };
 
-  const items = NAV.filter((item) => (!item.medicoOnly || isMedico) && (user?.role !== 'ADMIN' || item.to === '/configuracion'));
+  const items = NAV.filter((item) => {
+    if (user?.role === 'PACIENTE') return ['/mis-citas', '/configuracion'].includes(item.to);
+    if (item.to === '/mis-citas') return false;
+    if (item.to === '/usuarios') return user?.role === 'ADMIN';
+    if (['/medicos', '/recepcion'].includes(item.to)) return user?.role === 'ADMIN' || user?.role === 'RECEPCION';
+    return !item.medicoOnly || isMedico;
+  });
 
   return (
     <div className="app-shell">

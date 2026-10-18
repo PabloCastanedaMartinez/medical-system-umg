@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { CalendarDays, CalendarPlus, CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, RefreshCw, XCircle } from 'lucide-react';
-import { appointmentsApi } from '../api/endpoints';
+import { appointmentsApi, doctorsApi } from '../api/endpoints';
 import { errorMessage } from '../api/client';
 import type { Appointment, AppointmentStatus } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmDialog';
 import { AppointmentStatusBadge, SyncStatusBadge } from '../components/StatusBadge';
-import { EmptyState, ErrorBanner, PageHeader, Spinner } from '../components/Common';
+import { EmptyState, ErrorBanner, PageHeader, Spinner, Field } from '../components/Common';
 import { useApi } from '../utils/useApi';
 import {
   addDays,
@@ -53,7 +53,8 @@ function periodLabel(mode: ViewMode, date: Date): string {
 
 /** Equivalente de appointment-calendar.fxml / AppointmentCalendarController. */
 export function AppointmentsPage() {
-  const { isRecepcion } = useAuth();
+  const { isRecepcion, isMedico } = useAuth();
+  const canManage = !isMedico;
   const toast = useToast();
   const { confirm, prompt } = useConfirm();
   const navigate = useNavigate();
@@ -61,19 +62,21 @@ export function AppointmentsPage() {
 
   const [mode, setMode] = useState<ViewMode>('DAY');
   const [current, setCurrent] = useState(() => clinicNow());
+  const doctors = useApi(() => doctorsApi.list(), []);
+  const [doctorId, setDoctorId] = useState<number | ''>('');
   const [statusFilter, setStatusFilter] = useState<AppointmentStatus | ''>('');
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<AppointmentFormMode>({ kind: 'create' });
 
   const [rangeStart, rangeEnd] = useMemo(() => rangeFor(mode, current), [mode, current]);
   const { data, loading, error, reload } = useApi(
-    (signal) => appointmentsApi.list(toIsoDateTime(rangeStart), toIsoDateTime(rangeEnd), statusFilter || null, signal),
-    [rangeStart.getTime(), rangeEnd.getTime(), statusFilter],
+    (signal) => appointmentsApi.list(toIsoDateTime(rangeStart), toIsoDateTime(rangeEnd), statusFilter || null, signal, doctorId === '' ? undefined : doctorId),
+    [rangeStart.getTime(), rangeEnd.getTime(), statusFilter, doctorId],
   );
   const appointments = data ?? [];
 
   useEffect(() => {
-    if (params.get('nueva') === '1') {
+    if (canManage && params.get('nueva') === '1') {
       setFormMode({ kind: 'create', date: clinicNow() });
       setFormOpen(true);
       params.delete('nueva');
@@ -113,12 +116,19 @@ export function AppointmentsPage() {
     });
     if (!ok) return;
     try {
-      await appointmentsApi.complete(a.id);
+      await appointmentsApi.complete(a.id, a.version);
       toast.success('Cita atendida', 'La cita fue marcada como ATENDIDA exitosamente');
       reload();
     } catch (err) {
       toast.error('Error', errorMessage(err, 'No se pudo marcar la cita como atendida'));
     }
+  };
+
+  const confirmAppointment = async (a: Appointment) => {
+    try {
+      await appointmentsApi.updateStatus(a.id, 'CONFIRMADA', a.version);
+      toast.success('Cita confirmada', 'La solicitud fue confirmada'); reload();
+    } catch (err) { toast.error('Error', errorMessage(err)); reload(); }
   };
 
   const cancel = async (a: Appointment) => {
@@ -132,7 +142,7 @@ export function AppointmentsPage() {
     });
     if (!reason) return;
     try {
-      await appointmentsApi.cancel(a.id, reason);
+      await appointmentsApi.cancel(a.id, reason, a.version);
       toast.success('Cita cancelada', 'La cita ha sido cancelada correctamente');
       reload();
     } catch (err) {
@@ -144,7 +154,7 @@ export function AppointmentsPage() {
     <div className="page">
       <PageHeader
         title="Agenda"
-        actions={
+        actions={canManage ?
           <button
             className="btn btn-primary"
             onClick={() => {
@@ -153,7 +163,7 @@ export function AppointmentsPage() {
             }}
           >
             <CalendarPlus size={16} aria-hidden /> Nueva cita
-          </button>
+          </button> : undefined
         }
       />
 
@@ -205,6 +215,9 @@ export function AppointmentsPage() {
           </button>
         </div>
 
+        {canManage && <Field label="Filtrar médico" htmlFor="agenda-doctor"><select id="agenda-doctor" value={doctorId} onChange={(e) => setDoctorId(e.target.value ? Number(e.target.value) : '')}>
+          <option value="">Todos los médicos</option>{doctors.data?.map((d) => <option key={d.id} value={d.id}>{d.fullName}</option>)}
+        </select></Field>}
         {error && <ErrorBanner message={error} onRetry={reload} />}
 
         {appointments.length === 0 && !loading ? (
@@ -216,6 +229,7 @@ export function AppointmentsPage() {
                 <tr>
                   <th>Fecha</th>
                   <th>Hora</th>
+                  <th>Médico</th>
                   <th>Paciente</th>
                   <th>Teléfono</th>
                   <th>Motivo</th>
@@ -233,6 +247,7 @@ export function AppointmentsPage() {
                       <td className="nowrap mono">
                         {formatTime(a.startTime)} - {formatTime(a.endTime)}
                       </td>
+                      <td>{a.doctorName}</td>
                       <td className="strong">{a.patientFullName ?? 'Paciente no asignado'}</td>
                       <td className="nowrap">{a.patientPhone || '-'}</td>
                       <td>
@@ -249,16 +264,18 @@ export function AppointmentsPage() {
                       </td>
                       <td className="col-actions">
                         <div className="row-actions">
-                          {!isRecepcion && (
+                          {isMedico && (
                             <button className="icon-button" title="Ver expediente clínico" aria-label="Ver expediente clínico" onClick={() => openRecord(a)}>
                               <ClipboardList size={16} />
                             </button>
                           )}
+                          {canManage && <>
+                          {a.status === 'PENDIENTE' && <button className="btn btn-ghost btn-xs" aria-label="Confirmar cita" onClick={() => confirmAppointment(a)}>Confirmar</button>}
                           <button
                             className="icon-button"
                             title="Reprogramar cita"
                             aria-label="Reprogramar cita"
-                            disabled={done}
+                            disabled={done || !['PENDIENTE', 'PROGRAMADA', 'CONFIRMADA'].includes(a.status)}
                             onClick={() => {
                               setFormMode({ kind: 'reschedule', appointment: a });
                               setFormOpen(true);
@@ -266,12 +283,13 @@ export function AppointmentsPage() {
                           >
                             <RefreshCw size={16} />
                           </button>
-                          <button className="icon-button text-success" title="Marcar como atendida" aria-label="Marcar como atendida" disabled={done} onClick={() => complete(a)}>
+                          <button className="icon-button text-success" title="Marcar como atendida" aria-label="Marcar como atendida" disabled={a.status !== 'EN_SALA'} onClick={() => complete(a)}>
                             <CheckCircle2 size={16} />
                           </button>
                           <button className="icon-button text-danger" title="Cancelar cita" aria-label="Cancelar cita" disabled={done} onClick={() => cancel(a)}>
                             <XCircle size={16} />
                           </button>
+                          </>}
                         </div>
                       </td>
                     </tr>

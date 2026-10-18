@@ -8,7 +8,7 @@ Interfaz web de CECAMed construida con **React 18, TypeScript y Vite**. Reemplaz
 | --- | --- |
 | Pantallas | Listas: acceso, panel principal, pacientes, expediente clínico (antecedentes, consultas, nueva consulta, citas y documentos), agenda, recepción con sala de espera y configuración. Tema claro/oscuro y diseño adaptable a celular. |
 | Conexión con `cecamed-api` | Integrada con `/api/v1`, errores *Problem Details*, Bearer, refresh rotatorio y logout con revocación. |
-| Endpoints de negocio | Pacientes, expediente y consultas básicas integrados con la API real; agenda, recepción y documentos pendientes del incremento 2. Contrato vigente: [api-contract.md](../docs/api-contract.md). |
+| Endpoints de negocio | Pacientes, expediente, consultas, médicos, horarios, agenda, recepción e historial integrados con la API real. Adjuntos clínicos implementados: carga, lista, descarga y eliminación de PDF/PNG/JPEG hasta 15 MB, solo MEDICO. Contrato vigente: [api-contract.md](../docs/api-contract.md). |
 | API simulada | `npm run dev:mock` permite usar todas las pantallas con datos de ejemplo mientras el backend avanza. |
 
 ## Requisitos
@@ -110,3 +110,22 @@ configuración; pacientes son para MEDICO/RECEPCION y contenido clínico para ME
 El listado de pacientes usa paginación del servidor. Las ediciones conservan la
 versión leída y muestran conflictos sin sobreescribir datos recientes. El instante
 de consulta se asigna en el servidor; no existe un selector de fecha retroactiva.
+
+## Verificación del flujo real de citas
+
+`npm test` comprueba sesiones y `npm run build` valida TypeScript. La prueba de
+navegador utiliza una API real y crea tres médicos, recepción y un paciente propios;
+verifica el conflicto concurrente, la recarga de horarios, confirmación, reprogramación,
+cancelación y el historial. Ejecútela únicamente con una base desechable.
+
+```bash
+npx playwright install chromium
+# Inicie previamente backend y Vite contra la base de pruebas.
+E2E_BASE_URL=http://127.0.0.1:5173 \
+E2E_ADMIN_USERNAME=usuario_de_prueba \
+E2E_ADMIN_PASSWORD=contraseña_de_prueba \
+npm run test:e2e
+```
+
+Las credenciales deben corresponder al administrador de esa base de pruebas.
+El navegador usa UTC para comprobar la conversión a la hora de Guatemala.

@@ -58,6 +58,7 @@ public class ConsultationJpaEntity {
 
     @Column(name = "notes")
     private String notes;
+    @Column(name = "icd10_code", length = 20)
     private String icd10Code;
     public String getIcd10Code() { return icd10Code; }
     public void setIcd10Code(String value) { icd10Code = value; }

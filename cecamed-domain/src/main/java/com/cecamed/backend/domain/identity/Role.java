@@ -1,6 +1,7 @@
 package com.cecamed.backend.domain.identity;
 
 public enum Role {
+    PACIENTE("Paciente"),
     MEDICO("Médico"),
     RECEPCION("Recepción"),
     ADMIN("Administrador");

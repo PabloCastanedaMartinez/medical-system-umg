@@ -1,7 +1,7 @@
 // Tipos que reflejan los DTO de cecamed-services y cecamed-web.
 // Fechas: LocalDateTime -> "2026-10-15T09:30:00", LocalDate -> "2026-10-15", LocalTime -> "08:00:00".
 
-export type UserRole = 'MEDICO' | 'RECEPCION' | 'ADMIN';
+export type UserRole = 'MEDICO' | 'RECEPCION' | 'ADMIN' | 'PACIENTE';
 
 export interface SessionUser {
   username: string;
@@ -49,6 +49,7 @@ export interface Patient {
 }
 
 export interface PatientRequest {
+  allergies?: string;
   version?: number;
   identificationNumber?: string | null;
   firstName: string;
@@ -68,6 +69,7 @@ export interface PatientRequest {
 export type PatientStatusFilter = 'ACTIVE' | 'INACTIVE' | 'ALL';
 
 export type AppointmentStatus =
+  | 'PENDIENTE'
   | 'PROGRAMADA'
   | 'CONFIRMADA'
   | 'EN_SALA'
@@ -79,6 +81,10 @@ export type AppointmentStatus =
 export type GoogleSyncStatus = 'PENDING' | 'SYNCED' | 'FAILED' | 'NOT_APPLICABLE';
 
 export interface Appointment {
+  doctorId: number;
+  doctorName: string;
+  specialty: string;
+  version: number;
   id: number;
   patientId: number;
   patientFullName: string | null;
@@ -101,6 +107,7 @@ export interface Appointment {
 }
 
 export interface AppointmentRequest {
+  doctorId: number;
   patientId: number;
   startTime: string;
   endTime: string;
@@ -109,12 +116,14 @@ export interface AppointmentRequest {
 }
 
 export interface AppointmentReschedule {
+  version: number;
   newStartTime: string;
   newEndTime: string;
   reason: string;
 }
 
 export interface AvailableSlot {
+  doctorId: number;
   startTime: string;
   endTime: string;
   available: boolean;
@@ -213,6 +222,8 @@ export interface ConsultationRequest {
 export type DayOfWeek = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
 
 export interface DoctorSchedule {
+  doctorId: number;
+  doctorName: string;
   id: number;
   dayOfWeek: DayOfWeek;
   startTime: string;
@@ -224,6 +235,8 @@ export interface DoctorSchedule {
 export type BlockType = 'VACACIONES' | 'FERIADO' | 'CAPACITACION' | 'PERSONAL' | 'MANTENIMIENTO' | 'OTRO';
 
 export interface ScheduleBlock {
+  doctorId: number;
+  doctorName: string;
   id: number;
   title: string;
   startDateTime: string;
@@ -236,6 +249,7 @@ export interface ScheduleBlock {
 }
 
 export interface ScheduleBlockRequest {
+  doctorId: number;
   title: string;
   startDateTime: string;
   endDateTime: string;
@@ -309,4 +323,34 @@ export interface ConsultationResponse {
   createdAt: string;
   updatedAt: string;
   version: number;
+}
+
+export interface Doctor {
+  id: number;
+  fullName: string;
+  specialty: string;
+  username: string;
+  active: boolean;
+  version: number;
+}
+export interface HoursRequest {
+  dayOfWeek: DayOfWeek;
+  startTime: string;
+  endTime: string;
+  slotDurationMinutes: number;
+}
+export interface DoctorRequest {
+  fullName: string;
+  specialty: string;
+  username: string;
+  password?: string;
+  schedules: HoursRequest[];
+  version?: number;
+}
+export interface UserAccount {
+  id: number;
+  username: string;
+  fullName: string;
+  role: UserRole;
+  active: boolean;
 }

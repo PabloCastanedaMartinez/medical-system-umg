@@ -37,7 +37,7 @@ class PostgresIntegrationTest {
         assertThat(java.util.Arrays.stream(flyway.info().applied())
                 .filter(migration -> migration.getVersion() != null)
                 .map(migration -> migration.getVersion().toString()))
-                .containsExactly("1", "2", "3", "4", "5");
+                .containsExactly("1", "2", "3", "4", "5", "6", "7");
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(flyway.getConfiguration().isCleanDisabled()).isTrue();
         assertThat(flyway.getConfiguration().isBaselineOnMigrate()).isFalse();
@@ -46,12 +46,12 @@ class PostgresIntegrationTest {
     @Test
     void clinicalTablesAndPatientForeignKeysExist() throws SQLException {
         try (var connection = dataSource.getConnection()) {
-            for (String table : new String[]{"patients", "medical_records", "consultations"}) {
+            for (String table : new String[]{"patients", "medical_records", "consultations", "patient_documents"}) {
                 try (var result = connection.getMetaData().getTables(null, "cecamed", table, new String[]{"TABLE"})) {
                     assertThat(result.next()).as("Tabla %s", table).isTrue();
                 }
             }
-            for (String table : new String[]{"medical_records", "consultations"}) {
+            for (String table : new String[]{"medical_records", "consultations", "patient_documents"}) {
                 try (var keys = connection.getMetaData().getImportedKeys(null, "cecamed", table)) {
                     assertThat(keys.next()).as("FK de %s a patients", table).isTrue();
                     assertThat(keys.getString("PKTABLE_NAME")).isEqualTo("patients");

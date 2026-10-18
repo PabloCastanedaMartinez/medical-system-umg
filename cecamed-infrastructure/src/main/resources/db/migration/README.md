@@ -25,3 +25,6 @@ una base PostgreSQL desechable. Ver las instrucciones en el README raíz.
 
 La base del backend es independiente de la aplicación de escritorio. No copiar
 automáticamente sus migraciones ni apuntar este proyecto a la base existente.
+
+- `V6__scheduling.sql`: médicos, agenda, portal y auditoría; requiere `btree_gist`.
+- `V7__patient_documents.sql`: metadatos de adjuntos con FK al paciente. Bytes fuera de PostgreSQL en `DOCUMENTS_DIRECTORY`.

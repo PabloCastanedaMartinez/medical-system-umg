@@ -12,6 +12,7 @@ import { EmptyState, ErrorBanner, PageHeader, Spinner } from '../components/Comm
 import { useApi, useDebounced } from '../utils/useApi';
 import { formatDate } from '../utils/format';
 import { BLOOD_TYPE_SHORT, GENDER_SHORT } from '../utils/labels';
+import { PatientAccessModal } from './PatientAccessModal';
 import { PatientFormModal } from './PatientFormModal';
 
 const FILTERS: { value: PatientStatusFilter; label: string }[] = [
@@ -22,7 +23,8 @@ const FILTERS: { value: PatientStatusFilter; label: string }[] = [
 
 /** Equivalente de patient-list.fxml / PatientListController. */
 export function PatientsPage() {
-  const { isRecepcion } = useAuth();
+  const { isRecepcion, isMedico } = useAuth();
+  const [accessPatient, setAccessPatient] = useState<Patient | null>(null);
   const toast = useToast();
   const { confirm } = useConfirm();
   const navigate = useNavigate();
@@ -181,7 +183,10 @@ export function PatientsPage() {
                     </td>
                     <td className="col-actions">
                       <div className="row-actions">
-                        {!isRecepcion && (
+                        <button className="btn btn-ghost btn-xs" onClick={() => navigate(`/pacientes/${p.id}/citas`)}>Citas</button>
+                        {!isMedico && <button className="btn btn-ghost btn-xs" onClick={() => setAccessPatient(p)}>Crear acceso</button>}
+
+                        {isMedico && (
                           <button className="icon-button" title="Ver expediente clínico" aria-label="Ver expediente clínico" onClick={() => openRecord(p)}>
                             <ClipboardList size={16} />
                           </button>
@@ -212,6 +217,7 @@ export function PatientsPage() {
         <span>Página {page + 1} · {data?.totalElements ?? 0} pacientes</span>
         <button className="btn btn-ghost" disabled={loading || page + 1 >= (data?.totalPages ?? 0)} onClick={() => setPage(page + 1)}>Siguiente</button>
       </div>
+      <PatientAccessModal patient={accessPatient} onClose={() => setAccessPatient(null)} />
       <PatientFormModal
         open={formOpen}
         patient={editing}

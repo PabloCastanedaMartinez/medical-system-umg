@@ -3,9 +3,11 @@ import { CalendarCheck } from 'lucide-react';
 import { Modal } from '../components/Modal';
 import { Field, Spinner } from '../components/Common';
 import { useToast } from '../components/Toast';
-import { appointmentsApi, patientsApi } from '../api/endpoints';
-import { errorMessage } from '../api/client';
-import type { Appointment, AvailableSlot, Patient } from '../api/types';
+import { appointmentsApi, patientsApi, doctorsApi, portalApi } from '../api/endpoints';
+import { ApiError, errorMessage } from '../api/client';
+import type { Appointment, AvailableSlot, Patient, Doctor } from '../api/types';
+import { useAuth } from '../auth/AuthContext';
+import { APPOINTMENT_STATUS } from '../utils/labels';
 import { blankToNull, clinicNow, formatDateTime, formatTime, parseLocalDateTime, startOfDay, toIsoDate } from '../utils/format';
 
 export type AppointmentFormMode =
@@ -22,6 +24,11 @@ interface Props {
 /** Equivalente de appointment-dialog.fxml / AppointmentDialogController (agendar y reprogramar). */
 export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
   const toast = useToast();
+  const { user } = useAuth();
+  const isPatient = user?.role === 'PACIENTE';
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [doctorId, setDoctorId] = useState<number | ''>('');
+  const [slotTick, setSlotTick] = useState(0);
   const isReschedule = mode.kind === 'reschedule';
 
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -42,6 +49,16 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
     if (!open) return;
     setError(null);
     setPatientFilter('');
+    setDoctorId(mode.kind === 'reschedule' ? mode.appointment.doctorId : '');
+    setSlots([]);
+    setSelectedSlot(null);
+    let active = true;
+    doctorsApi.list().then((list) => {
+      if (!active) return;
+      setDoctors(list);
+      if (mode.kind === 'create') setDoctorId(list[0]?.id ?? '');
+    }).catch((err) => active && setError(errorMessage(err)));
+
     setRescheduleReason('');
     if (mode.kind === 'reschedule') {
       const a = mode.appointment;
@@ -56,26 +73,28 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
       const base = mode.date && mode.date >= startOfDay(clinicNow()) ? mode.date : clinicNow();
       setDate(toIsoDate(base));
     }
-    patientsApi
-      .list('', 'ACTIVE')
+    (isPatient ? portalApi.profile().then((p) => [p]) : patientsApi.list('', 'ACTIVE'))
       .then((list) => {
+        if (!active) return;
         setPatients(list);
         if (mode.kind === 'create' && !mode.patientId && list.length > 0) {
           setPatientId((current) => (current === '' ? list[0].id : current));
         }
       })
-      .catch((err) => setError(errorMessage(err, 'No fue posible cargar los pacientes')));
+      .catch((err) => active && setError(errorMessage(err, 'No fue posible cargar los pacientes')));
+    return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Carga los horarios del día seleccionado.
   useEffect(() => {
-    if (!open || !date) return;
+    if (!open || !date || doctorId === '') return;
     let cancelled = false;
+    setSlots([]);
     setSlotsLoading(true);
     setSelectedSlot(null);
     appointmentsApi
-      .availableSlots(date)
+      .availableSlots(date, doctorId, mode.kind === 'reschedule' ? mode.appointment.id : undefined)
       .then((list) => {
         if (cancelled) return;
         setSlots(list);
@@ -88,7 +107,7 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open, date]);
+  }, [open, date, doctorId, slotTick]);
 
   const filteredPatients = useMemo(() => {
     const term = patientFilter.trim().toLowerCase();
@@ -107,6 +126,8 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
   };
 
   const validate = (): string | null => {
+    if (doctorId === '') return 'Debe seleccionar un médico';
+    if (slotsLoading) return 'Espere a que carguen los horarios';
     if (patientId === '') return 'Debe seleccionar un paciente para la cita';
     if (!date) return 'Debe seleccionar una fecha para la cita';
     if (!selectedSlot) return 'Debe seleccionar un horario disponible';
@@ -128,17 +149,19 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
     setError(null);
     try {
       if (mode.kind === 'create') {
-        const created = await appointmentsApi.create({
+        const created = await (isPatient ? portalApi.create : appointmentsApi.create)({
+          doctorId: doctorId as number,
           patientId: patientId as number,
           startTime: slot.startTime,
           endTime: slot.endTime,
           reasonForVisit: reason.trim(),
           notes: blankToNull(notes),
         });
-        toast.success('Cita agendada', `Cita confirmada para ${created.patientFullName ?? ''} el ${formatDateTime(created.startTime)}`);
+        toast.success('Solicitud registrada', `${APPOINTMENT_STATUS[created.status].label}: ${formatDateTime(created.startTime)}`);
         onSaved(created);
       } else {
         const updated = await appointmentsApi.reschedule(mode.appointment.id, {
+          version: mode.appointment.version,
           newStartTime: slot.startTime,
           newEndTime: slot.endTime,
           reason: rescheduleReason.trim(),
@@ -148,6 +171,9 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
       }
     } catch (err) {
       setError(errorMessage(err, 'No fue posible agendar la cita'));
+      if (err instanceof ApiError && err.status === 409) {
+        setSlots([]); setSelectedSlot(null); setSlotTick((tick) => tick + 1);
+      }
     } finally {
       setSaving(false);
     }
@@ -156,7 +182,7 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
   const title = isReschedule ? 'Reprogramar cita' : 'Nueva cita';
   const subtitle = isReschedule
     ? `Seleccione el nuevo día y horario para el paciente ${mode.appointment.patientFullName ?? ''}`
-    : 'Seleccione el paciente, fecha y horario disponible';
+    : isPatient ? 'Seleccione médico, fecha y horario libre' : 'Seleccione paciente, médico, fecha y horario libre';
 
   return (
     <Modal
@@ -168,10 +194,10 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
       subtitle={subtitle}
       footer={
         <>
-          <button type="button" className="btn btn-ghost" onClick={onClose} disabled={saving}>
+          <button type="button" className="btn btn-ghost" onClick={onClose} disabled={saving || slotsLoading}>
             Cancelar
           </button>
-          <button type="submit" form="appointment-form" className="btn btn-primary" disabled={saving}>
+          <button type="submit" form="appointment-form" className="btn btn-primary" disabled={saving || slotsLoading}>
             {saving ? <Spinner size={16} /> : <CalendarCheck size={16} aria-hidden />}
             {isReschedule ? 'Reprogramar' : 'Agendar cita'}
           </button>
@@ -180,9 +206,16 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
     >
       <form id="appointment-form" onSubmit={onSubmit} noValidate>
         <fieldset disabled={saving} className="form-section">
+          <Field label="Médico y especialidad" htmlFor="ap-doctor" required>
+            <select id="ap-doctor" disabled={isReschedule} value={doctorId}
+              onChange={(e) => { setSlots([]); setSelectedSlot(null); setDoctorId(e.target.value ? Number(e.target.value) : ''); }}>
+              <option value="">Seleccionar médico...</option>
+              {doctors.map((d) => <option key={d.id} value={d.id}>{d.fullName} · {d.specialty}</option>)}
+            </select>
+          </Field>
           <div className="form-grid">
             <Field label="Paciente" htmlFor="ap-patient" required className="span-2">
-              {!isReschedule && (
+              {!isReschedule && !isPatient && (
                 <input
                   type="search"
                   className="mb-xs"
@@ -195,7 +228,7 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
               <select
                 id="ap-patient"
                 value={patientId}
-                disabled={isReschedule}
+                disabled={isReschedule || isPatient}
                 onChange={(e) => setPatientId(e.target.value ? Number(e.target.value) : '')}
               >
                 <option value="">Seleccionar paciente...</option>
@@ -228,7 +261,7 @@ export function AppointmentFormModal({ open, mode, onClose, onSaved }: Props) {
                 <Spinner />
               </div>
             ) : slots.length === 0 ? (
-              <p className="muted slot-empty">No hay horario de atención configurado para el día seleccionado.</p>
+              <p className="muted slot-empty">No hay horarios libres para este médico en la fecha seleccionada.</p>
             ) : (
               <div className="slot-grid" role="radiogroup" aria-labelledby="slots-label">
                 {slots.map((s) => {

@@ -1,4 +1,4 @@
-# Arquitectura inicial
+# Arquitectura
 
 ## Contexto y decisión
 
@@ -61,11 +61,11 @@ comunicará mediante los contratos de aplicación.
 | Funcionalidad | Referencia original | Destino previsto | Estado |
 | --- | --- | --- | --- |
 | Identidad y acceso | Sesión y autenticación en `cecamed-ui` | `identity` | Implementado (Fase 2) |
-| Pacientes | `PatientService`, `PatientIdentity`, repositorios y restricciones | `patient` | Pendiente |
-| Expedientes y consultas | `MedicalRecordService`, `MedicalConsultationService` | `clinical` | Pendiente |
-| Citas, horarios y bloqueos | `AppointmentService`, `DoctorScheduleService` | `scheduling` | Pendiente |
-| Recepción y sala de espera | Controladores de escritorio y estados de citas | `reception`, coordinado con `scheduling` | Pendiente |
-| Adjuntos | `PatientDocumentService` y almacenamiento local | `document` | Pendiente |
+| Pacientes | `PatientService`, `PatientIdentity`, repositorios y restricciones | `patient` | Implementado |
+| Expedientes y consultas | `MedicalRecordService`, `MedicalConsultationService` | `clinical` | Implementado |
+| Citas, horarios y bloqueos | `AppointmentService`, `DoctorScheduleService` | `scheduling` | Implementado |
+| Recepción y sala de espera | Controladores de escritorio y estados de citas | `reception`, coordinado con `scheduling` | Implementado |
+| Adjuntos | `PatientDocumentService` y almacenamiento local | `document` | Implementado: metadatos JPA y archivos locales |
 | Inventario y kardex | `InventoryService` | `inventory` | Pendiente |
 | Google Calendar | `cecamed-calendar-integration` | Adaptadores de `scheduling` | Pendiente |
 
@@ -95,8 +95,7 @@ comunicará mediante los contratos de aplicación.
   inicializadas con `SET TIME ZONE 'UTC'`. Los futuros eventos persistirán instantes
   y la agenda convertirá horarios usando una zona explícita, inicialmente la del
   CECAMed original (`America/Guatemala`).
-- **Archivos:** límites multipart configurados; almacenamiento, permisos y
-  validación real de contenido se implementarán con el módulo de documentos.
+- **Archivos:** puertos de persistencia y almacenamiento, metadatos JPA y archivos locales UUID. Acceso MEDICO, límite 15 MB, validación de firma/extensión PDF/PNG/JPEG y checksum SHA-256. La eliminación confirma primero el metadato inactivo; un fallo de disco permite reintentar DELETE. La carga limpia el archivo si falla el commit. No existe atomicidad distribuida entre base y disco ni conciliación automática tras una caída del proceso.
 - **Operación:** salud sin detalles internos; readiness incluye la conexión a
   base de datos y liveness comprueba el proceso. Solo se expone Actuator health.
 - **Errores:** códigos estables y mensajes sin trazas ni valores rechazados;
@@ -117,3 +116,26 @@ comunicará mediante los contratos de aplicación.
 Cada etapa entregará contrato OpenAPI, implementación y pruebas relevantes.
 La migración de datos históricos requiere un proceso explícito y separado del
 arranque del backend; esta arquitectura no ejecuta dicha migración.
+
+## Agenda médica implementada
+
+El paquete `scheduling` mantiene el dominio y la aplicación independientes de Spring.
+`SchedulingUseCase` expone los flujos y `SchedulingAdministrationUseCase` provisiona
+identidad y perfiles. `SchedulingJdbcAdapter` implementa el puerto de persistencia
+con consultas con JOIN y `TransactionTemplate`; no expone entidades en HTTP.
+
+Cada mutación de agenda bloquea la fila del médico (`SELECT ... FOR UPDATE`) durante
+la comprobación y la escritura. Jornadas y bloqueos usan el mismo bloqueo. PostgreSQL
+agrega `EXCLUDE USING gist` sobre `doctor_id` y `tstzrange(start_time,end_time,'[)')`,
+exceptuando citas canceladas. Esto protege incluso escrituras externas a la aplicación.
+Las citas pendientes también reservan el intervalo; cancelar libera el espacio al commit.
+Las inasistencias y atenciones conservan el intervalo histórico ocupado.
+
+La jornada usa `DayOfWeek` y `LocalTime`; las reservas usan `Instant` y columnas
+`TIMESTAMP WITH TIME ZONE`. La conversión a fecha de atención utiliza America/Guatemala.
+Las reprogramaciones conservan una auditoría con actor, horario anterior y motivo, y
+regresan a PENDIENTE. Los cambios requieren la versión actual y transiciones válidas.
+
+Las asociaciones cuenta-médico y cuenta-paciente se guardan con claves foráneas y
+unicidad. El portal deriva el paciente del usuario autenticado; nunca usa un ID enviado
+por el navegador. La consulta de agenda de un médico deriva también su propio perfil.

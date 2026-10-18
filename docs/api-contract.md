@@ -187,7 +187,75 @@ después de persistir. El cliente conserva el formulario al recibir un conflicto
 no debe reintentar automáticamente sobrescribiendo con la versión nueva.
 
 Los permisos se comprueban en el servidor. ADMIN no tiene acceso clínico.
-Firma/enmiendas, documentos y agenda pertenecen al incremento 2. `filePath` no
-forma parte de ningún tipo público del frontend; la descarga usará el cliente
-HTTP común al integrar documentos. El simulador es demostrativo y no acredita
-la persistencia ni las reglas de los módulos pendientes.
+Firma y enmiendas siguen pendientes. Documentos y agenda están implementados.
+`filePath` y la clave de almacenamiento no forman parte del contrato público.
+Las descargas del frontend usan el cliente HTTP autenticado.
+
+## Médicos, disponibilidad y citas (API implementada)
+
+Todas las rutas siguientes parten de `/api/v1`. Fechas de calendario: `YYYY-MM-DD`;
+horas de jornada: `HH:mm`; reservas: ISO 8601 con zona (`Z` o `-06:00`).
+
+| Método y ruta | Acceso | Entrada / resultado |
+| --- | --- | --- |
+| GET `/doctors` | Personal y paciente | Médicos activos con ID, nombre y especialidad |
+| POST `/doctors` | RECEPCION, ADMIN | fullName, specialty, username, password opcional para cuenta existente, schedules |
+| PUT `/doctors/{id}` | RECEPCION, ADMIN | Datos, horarios y version actual |
+| GET `/schedules?doctorId=` | Personal y paciente | Bloques por médico: dayOfWeek, startTime, endTime, slotDurationMinutes |
+| GET `/appointments/available-slots?doctorId=&date=` | Personal y paciente | Solo horarios futuros libres; cada uno contiene doctorId, startTime, endTime |
+| GET `/appointments?start=&end=&doctorId=&status=` | Personal | Agenda por rango; MEDICO solo puede consultar su propio perfil |
+| GET `/doctors/me/agenda` | MEDICO | Agenda del día en America/Guatemala |
+| POST `/appointments` | RECEPCION, ADMIN | doctorId, patientId, startTime, endTime, reasonForVisit, notes opcional |
+| PUT `/appointments/{id}/reschedule` | RECEPCION, ADMIN | newStartTime, newEndTime, reason, version |
+| PATCH `/appointments/{id}/status` | RECEPCION, ADMIN | status, version |
+| POST `/appointments/{id}/cancel` | RECEPCION, ADMIN | reason, version |
+| GET `/patients/{id}/appointments` | Personal | Historial con médico, paciente, fecha, motivo y estado |
+| POST `/patients/{id}/portal-access` | RECEPCION, ADMIN | username, password; crea cuenta PACIENTE asociada |
+| GET `/portal/me` | PACIENTE | Perfil del paciente autenticado |
+| GET `/portal/appointments` | PACIENTE | Historial propio |
+| POST `/portal/appointments` | PACIENTE | doctorId, startTime, endTime, reasonForVisit; paciente derivado del token |
+| GET `/schedule-blocks` | RECEPCION, ADMIN | Bloqueos, opcionalmente por doctorId |
+| POST `/schedule-blocks` | RECEPCION, ADMIN | doctorId, title, startDateTime, endDateTime, blockType, allDay, reason |
+| DELETE `/schedule-blocks/{id}` | RECEPCION, ADMIN | Quita el bloqueo |
+| GET `/dashboard/summary` | Personal | Resumen diario; para MEDICO solo su agenda |
+
+Un bloque de jornada debe contener un número entero de citas de 5 a 240 minutos;
+se admiten varios bloques diarios sin solaparse. Para reagendar, el personal puede
+enviar `excludingId` al consultar disponibilidad. Los pacientes no pueden excluir citas.
+
+Estados: PENDIENTE → CONFIRMADA → EN_SALA → ATENDIDA. PENDIENTE o CONFIRMADA pueden
+pasar a NO_ASISTIO o CANCELADA; EN_SALA puede cancelarse. Estados terminales no pueden
+reactivarse. Reprogramar una cita pendiente o confirmada la devuelve a PENDIENTE.
+
+HTTP 409 `APPOINTMENT_SLOT_OCCUPIED`: espacio ocupado. HTTP 409 `STALE_VERSION`:
+versión desactualizada. HTTP 400: intervalo inválido, pasado o fuera de jornada.
+HTTP 403: rol o pertenencia incorrectos. Una cancelación libera su espacio.
+
+## Documentos clínicos (implementado)
+
+Todas las rutas requieren MEDICO. Recepción, administración y pacientes reciben
+403; sin sesión se devuelve 401.
+
+| Método y ruta relativa a /api/v1 | Resultado |
+| --- | --- |
+| GET /patients/{patientId}/documents | Lista de documentos activos, más recientes primero. |
+| POST /patients/{patientId}/documents | Multipart: file, documentType, description opcional. 201 y Location de descarga. |
+| GET /documents/{id}/file | Bytes autenticados, Content-Type detectado, attachment y no-store. |
+| DELETE /documents/{id} | Desactiva el metadato y elimina los bytes. 204; reintento idempotente. |
+| GET /patients/{patientId}/documents/{id}/content | Descarga equivalente, validando pertenencia al paciente. |
+| POST /patients/{patientId}/documents/{id}/deactivate | Eliminación equivalente, validando pertenencia al paciente. |
+
+Respuesta: id, patientId, consultationId (null), fileName, originalFileName,
+fileType, documentType, fileSizeBytes, checksumSha256, description, createdAt
+y updatedAt. Fechas UTC. Sin asociación a consulta en esta versión.
+
+Tipos: ESTUDIO_LABORATORIO, IMAGEN_RAYOS_X, RECETA_MEDICA, INFORME_EXTERNO,
+CONSENTIMIENTO_INFORMADO y OTRO. PDF, PNG o JPEG no vacío, hasta 15 MiB;
+se detecta la firma sin confiar en el MIME enviado y se exige extensión coherente.
+Descripción: máximo 2000 caracteres. Esta comprobación no es un análisis antivirus
+ni validación estructural completa del documento.
+
+400 para entradas inválidas; 413 para exceso de tamaño; 404 para paciente/documento
+inexistente, documento inactivo o de otro paciente; 409 al cargar para un paciente
+inactivo. Errores Problem Details. La eliminación conserva el metadato inactivo y
+borra el archivo físico. Un fallo de disco permite reintentar DELETE con el mismo ID.

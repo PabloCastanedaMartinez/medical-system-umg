@@ -14,6 +14,8 @@ const now = () => clinicNow();
 
 const USERS = {
   medico: { password: 'medico123', fullName: 'Dr. Angel Anibal Mazariegos Pinales', role: 'MEDICO', roleDisplayName: 'Médico Especialista' },
+  admin: { password: 'admin123', fullName: 'Administrador de ejemplo', role: 'ADMIN', roleDisplayName: 'Administrador' },
+  paciente: { password: 'paciente123', fullName: 'María José López Herrera', role: 'PACIENTE', roleDisplayName: 'Paciente', patientId: 1 },
   recepcion: { password: 'recepcion123', fullName: 'Licda. Sofía Méndez', role: 'RECEPCION', roleDisplayName: 'Recepción Clínica' },
 };
 // Token simulado: "mock-<usuario>". Sobrevive a recargas porque el cliente lo guarda en sessionStorage.
@@ -23,6 +25,11 @@ const sessionFromToken = (token) => {
   return u ? { username, fullName: u.fullName, role: u.role, roleDisplayName: u.roleDisplayName, loginTime: iso(now()) } : null;
 };
 let seq = 100;
+const doctors = [
+  { id: 1, fullName: USERS.medico.fullName, specialty: 'Medicina general', username: 'medico', active: true, version: 0 },
+  { id: 2, fullName: 'Dra. Ana Morales', specialty: 'Pediatría', username: 'medico2', active: true, version: 0 },
+  { id: 3, fullName: 'Dr. Carlos García', specialty: 'Medicina interna', username: 'medico3', active: true, version: 0 },
+];
 
 const patients = [
   ['María José', 'López Herrera', '1985-03-12', 'FEMENINO', 'O_POSITIVO', '5555-1234'],
@@ -55,7 +62,7 @@ const today = clinicNow(); today.setHours(0, 0, 0, 0);
 const at = (h, m, dayOffset = 0) => { const d = new Date(today); d.setDate(d.getDate() + dayOffset); d.setHours(h, m, 0, 0); return d; };
 const mkAppt = (id, pid, start, status, reason) => {
   const p = patients.find((x) => x.id === pid);
-  return { id, patientId: pid, patientFullName: p.fullName, patientPhone: p.phone, startTime: iso(start), endTime: iso(new Date(start.getTime() + 30 * 6e4)),
+  return { id, doctorId: 1, doctorName: doctors[0].fullName, specialty: doctors[0].specialty, version: 0, patientId: pid, patientFullName: p.fullName, patientPhone: p.phone, startTime: iso(start), endTime: iso(new Date(start.getTime() + 30 * 6e4)),
     status, reasonForVisit: reason, cancellationReason: null, notes: null, googleEventId: null, googleSyncStatus: 'NOT_APPLICABLE',
     googleHtmlLink: null, googleLastSyncedAt: null, checkedInAt: status === 'EN_SALA' ? iso(new Date(now().getTime() - 17 * 6e4)) : null,
     createdAt: iso(now()), updatedAt: iso(now()) };
@@ -64,12 +71,12 @@ const appointments = [
   mkAppt(1, 1, at(8, 0), 'ATENDIDA', 'Chequeo general'),
   mkAppt(2, 2, at(9, 0), 'EN_SALA', 'Control de presión arterial'),
   mkAppt(3, 3, at(10, 30), 'CONFIRMADA', 'Dolor abdominal'),
-  mkAppt(4, 5, at(11, 0), 'PROGRAMADA', 'Vacunación'),
-  mkAppt(5, 1, at(15, 0), 'PROGRAMADA', 'Resultados de laboratorio'),
-  mkAppt(6, 2, at(9, 30, 2), 'PROGRAMADA', 'Seguimiento'),
+  mkAppt(4, 5, at(11, 0), 'PENDIENTE', 'Vacunación'),
+  mkAppt(5, 1, at(15, 0), 'PENDIENTE', 'Resultados de laboratorio'),
+  mkAppt(6, 2, at(9, 30, 2), 'PENDIENTE', 'Seguimiento'),
 ];
-const schedules = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'].map((d, i) => ({ id: i + 1, dayOfWeek: d, startTime: '08:00:00', endTime: d === 'SATURDAY' ? '12:00:00' : '17:00:00', slotDurationMinutes: 30, isActive: true }));
-const blocks = [{ id: 1, title: 'Almuerzo', startDateTime: iso(at(12, 0)), endDateTime: iso(at(13, 0)), blockType: 'PERSONAL', allDay: false, reason: null, googleEventId: null, createdAt: iso(now()) }];
+const schedules = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'].map((d, i) => ({ id: i + 1, dayOfWeek: d, startTime: '08:00:00', endTime: d === 'SATURDAY' ? '12:00:00' : '17:00:00', slotDurationMinutes: 30, isActive: true, doctorId: 1, doctorName: doctors[0].fullName }));
+const blocks = [{ id: 1, doctorId: 1, doctorName: doctors[0].fullName, title: 'Almuerzo', startDateTime: iso(at(12, 0)), endDateTime: iso(at(13, 0)), blockType: 'PERSONAL', allDay: false, reason: null, googleEventId: null, createdAt: iso(now()) }];
 
 const send = (res, status, body) => {
   res.r = status === 204 || body === undefined ? new Response(null, { status }) : new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -81,25 +88,25 @@ const err = (res, status, detail, reqPath) => {
 };
 const dow = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 
-function slotsFor(dateStr) {
+function slotsFor(dateStr, doctorId = 1, excludingId = null) {
   const d = new Date(`${dateStr}T00:00:00`);
-  const sch = schedules.find((s) => s.dayOfWeek === dow[d.getDay()]);
+  const sch = schedules.find((s) => s.dayOfWeek === dow[d.getDay()] && s.doctorId === doctorId);
   if (!sch) return [];
   const out = [];
   const [sh] = sch.startTime.split(':').map(Number); const [eh] = sch.endTime.split(':').map(Number);
   for (let t = new Date(d.setHours(sh, 0, 0, 0)); t.getHours() < eh; t = new Date(t.getTime() + 30 * 6e4)) {
     const end = new Date(t.getTime() + 30 * 6e4);
-    const blocked = blocks.some((b) => parse(b.startDateTime) < end && parse(b.endDateTime) > t);
-    const busy = appointments.some((a) => a.status !== 'CANCELADA' && parse(a.startTime) < end && parse(a.endTime) > t);
-    out.push({ startTime: iso(t), endTime: iso(end), available: !blocked && !busy, reasonIfNotAvailable: blocked ? 'Horario bloqueado por descanso/actividad programada' : busy ? 'Horario ocupado por otra cita médica' : null });
+    const blocked = blocks.some((b) => b.doctorId === doctorId && parse(b.startDateTime) < end && parse(b.endDateTime) > t);
+    const busy = appointments.some((a) => a.doctorId === doctorId && a.id !== excludingId && a.status !== 'CANCELADA' && parse(a.startTime) < end && parse(a.endTime) > t);
+    out.push({ doctorId, startTime: iso(t), endTime: iso(end), available: !blocked && !busy, reasonIfNotAvailable: blocked ? 'Horario bloqueado por descanso/actividad programada' : busy ? 'Horario ocupado por otra cita médica' : null });
   }
   return out;
 }
 
 /** Conflicto de horario con otra cita activa (el contrato pide 409). */
-function overlaps(start, end, ignoreId = null) {
+function overlaps(start, end, ignoreId = null, doctorId = 1) {
   const s = parse(start); const e = parse(end);
-  return appointments.some((a) => a.id !== ignoreId && !['CANCELADA', 'NO_ASISTIO'].includes(a.status) && parse(a.startTime) < e && parse(a.endTime) > s);
+  return appointments.some((a) => a.doctorId === doctorId && a.id !== ignoreId && a.status !== 'CANCELADA' && parse(a.startTime) < e && parse(a.endTime) > s);
 }
 
 async function api(req, res, url) {
@@ -128,12 +135,34 @@ async function api(req, res, url) {
   if (medicoOnly && user.role !== 'MEDICO') return err(res, 403, `El perfil ${user.roleDisplayName} no tiene permisos para esta operación`, p);
 
   let mm;
+  if (p === '/api/doctors' && m === 'GET') return send(res, 200, doctors);
+  if (p === '/api/doctors' && m === 'POST') {
+    const d = { ...body, id: ++seq, version: 0, active: true }; delete d.password;
+    doctors.push(d); for (const h of body.schedules) schedules.push({ ...h, id: ++seq, doctorId: d.id, doctorName: d.fullName, isActive: true });
+    return send(res, 201, d);
+  }
+  if ((mm = p.match(/^\/api\/doctors\/(\d+)$/)) && m === 'PUT') {
+    const d = doctors.find((d) => d.id === +mm[1]); if (!d) return err(res, 404, 'Médico no encontrado', p);
+    Object.assign(d, body, { version: d.version + 1 });
+    for (let i = schedules.length - 1; i >= 0; i--) if (schedules[i].doctorId === d.id) schedules.splice(i, 1);
+    for (const h of body.schedules) schedules.push({ ...h, id: ++seq, doctorId: d.id, doctorName: d.fullName, isActive: true });
+    return send(res, 200, d);
+  }
+  if ((mm = p.match(/^\/api\/patients\/(\d+)\/portal-access$/)) && m === 'POST') {
+    if (USERS[body.username]) return err(res, 409, 'Usuario ya registrado', p);
+    const patient = patients.find((v) => v.id === +mm[1]);
+    USERS[body.username] = { password: body.password, fullName: patient.fullName, patientId: patient.id, role: 'PACIENTE', roleDisplayName: 'Paciente' };
+    return send(res, 201);
+  }
+  if (p === '/api/portal/me') return send(res, 200, patients.find((p) => p.id === USERS[user.username].patientId));
+  if (p === '/api/portal/appointments' && m === 'GET') return send(res, 200, appointments.filter((a) => a.patientId === USERS[user.username].patientId));
+  if (p === '/api/portal/appointments' && m === 'POST') body.patientId = USERS[user.username].patientId;
   if (p === '/api/auth/me') return send(res, 200, user);
   if (p === '/api/auth/logout') return send(res, 204);
   if ((mm = p.match(/^\/api\/documents\/(\d+)\/file$/))) { res.r = new Response(new Blob(['%PDF-1.4\n% Documento de ejemplo (API simulada)\n'], { type: 'application/pdf' }), { status: 200 }); return; }
   if (p === '/api/dashboard/summary') {
     const t = appointments.filter((a) => parse(a.startTime).toDateString() === today.toDateString());
-    return send(res, 200, { appointmentsToday: t.length, waitingRoom: t.filter((a) => a.status === 'EN_SALA').length, completedToday: t.filter((a) => a.status === 'ATENDIDA').length, pendingToday: t.filter((a) => ['PROGRAMADA', 'CONFIRMADA'].includes(a.status)).length, activePatients: patients.filter((x) => x.active).length, todayAppointments: t });
+    return send(res, 200, { appointmentsToday: t.length, waitingRoom: t.filter((a) => a.status === 'EN_SALA').length, completedToday: t.filter((a) => a.status === 'ATENDIDA').length, pendingToday: t.filter((a) => ['PENDIENTE', 'CONFIRMADA'].includes(a.status)).length, activePatients: patients.filter((x) => x.active).length, todayAppointments: t });
   }
   if (p === '/api/patients' && m === 'GET') {
     const term = (url.searchParams.get('search') ?? '').toLowerCase(); const st = url.searchParams.get('status') ?? 'ACTIVE';
@@ -148,7 +177,7 @@ async function api(req, res, url) {
     if (patients.some((x) => x.firstName.toLowerCase() === body.firstName.toLowerCase() && x.lastName.toLowerCase() === body.lastName.toLowerCase() && x.birthDate === body.birthDate))
       return err(res, 422, 'Ya existe un paciente con los mismos nombres, apellidos y fecha de nacimiento. Revise el registro existente, incluidos los pacientes inactivos.', p);
     const np = { ...body, version: 0, createdAt: iso(now()), updatedAt: iso(now()), id: ++seq, fullName: `${body.firstName} ${body.lastName}`, age: now().getFullYear() - Number(body.birthDate.slice(0, 4)), active: true, medicalRecordNumber: `EXP-2026-${seq}00` };
-    patients.push(np); records[np.id] = { version: 0, id: np.id, patientId: np.id, recordNumber: np.medicalRecordNumber };
+    patients.push(np); records[np.id] = { version: 0, id: np.id, patientId: np.id, recordNumber: np.medicalRecordNumber, allergies: body.allergies };
     return send(res, 201, np);
   }
   if ((mm = p.match(/^\/api\/patients\/(\d+)$/))) {
@@ -198,25 +227,26 @@ async function api(req, res, url) {
     return send(res, 200, documents.filter((d) => d.patientId === +mm[1]));
   }
   if ((mm = p.match(/^\/api\/documents\/(\d+)$/)) && m === 'DELETE') { documents.splice(documents.findIndex((d) => d.id === +mm[1]), 1); return send(res, 204); }
-  if (p === '/api/appointments/available-slots') return send(res, 200, slotsFor(url.searchParams.get('date')));
+  if (p === '/api/appointments/available-slots') return send(res, 200, slotsFor(url.searchParams.get('date'), +url.searchParams.get('doctorId'), +(url.searchParams.get('excludingId') ?? -1)).filter((s) => s.available && parse(s.startTime) > now()));
   if (p === '/api/appointments' && m === 'GET') {
     const s = parse(url.searchParams.get('start')); const e = parse(url.searchParams.get('end')); const st = url.searchParams.get('status');
-    return send(res, 200, appointments.filter((a) => parse(a.startTime) >= s && parse(a.startTime) <= e && (!st || a.status === st)).sort((a, b) => a.startTime.localeCompare(b.startTime)));
+    return send(res, 200, appointments.filter((a) => parse(a.startTime) >= s && parse(a.startTime) <= e && (!st || a.status === st) && (!url.searchParams.get('doctorId') || a.doctorId === +url.searchParams.get('doctorId'))).sort((a, b) => a.startTime.localeCompare(b.startTime)));
   }
-  if (p === '/api/appointments' && m === 'POST') {
+  if (['/api/appointments', '/api/portal/appointments'].includes(p) && m === 'POST') {
     if (parse(body.startTime) < now()) return err(res, 400, 'La hora de inicio debe ser en el presente o futuro', p);
-    if (overlaps(body.startTime, body.endTime)) return err(res, 409, 'El horario seleccionado ya está ocupado por otra cita', p);
-    const a = mkAppt(++seq, body.patientId, parse(body.startTime), 'PROGRAMADA', body.reasonForVisit); appointments.push(a); return send(res, 201, a);
+    if (overlaps(body.startTime, body.endTime, null, body.doctorId)) return err(res, 409, 'El horario seleccionado ya está ocupado por otra cita', p);
+    const a = mkAppt(++seq, body.patientId, parse(body.startTime), 'PENDIENTE', body.reasonForVisit); Object.assign(a, { doctorId: body.doctorId, doctorName: doctors.find((d) => d.id === body.doctorId)?.fullName, specialty: doctors.find((d) => d.id === body.doctorId)?.specialty }); appointments.push(a); return send(res, 201, a);
   }
   if ((mm = p.match(/^\/api\/appointments\/(\d+)\/(reschedule|cancel|complete|status)$/))) {
     const a = appointments.find((x) => x.id === +mm[1]);
     if (!a) return err(res, 404, `Cita no encontrada con id: '${mm[1]}'`, p);
-    if (mm[2] === 'reschedule' && overlaps(body.newStartTime, body.newEndTime, a.id)) return err(res, 409, 'El horario seleccionado ya está ocupado por otra cita', p);
-    if (mm[2] === 'reschedule') Object.assign(a, { startTime: body.newStartTime, endTime: body.newEndTime, status: 'REPROGRAMADA' });
+    if (mm[2] === 'reschedule' && overlaps(body.newStartTime, body.newEndTime, a.id, a.doctorId)) return err(res, 409, 'El horario seleccionado ya está ocupado por otra cita', p);
+    if (mm[2] === 'reschedule') Object.assign(a, { startTime: body.newStartTime, endTime: body.newEndTime, status: 'PENDIENTE' });
     if (mm[2] === 'cancel') Object.assign(a, { status: 'CANCELADA', cancellationReason: body.reason });
     if (mm[2] === 'complete') a.status = 'ATENDIDA';
     if (mm[2] === 'status') a.status = body.status;
     if (mm[2] === 'status' && body.status === 'EN_SALA') a.checkedInAt = iso(now());
+    a.version = (a.version ?? 0) + 1;
     a.updatedAt = iso(now());
     return send(res, 200, a);
   }

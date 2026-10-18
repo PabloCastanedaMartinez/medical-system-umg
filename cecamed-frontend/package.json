@@ -11,7 +11,8 @@
     "build:mock": "tsc -b && vite build --mode mock",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "test:e2e": "node tests/scheduling.e2e.mjs"
   },
   "dependencies": {
     "@fontsource-variable/atkinson-hyperlegible-next": "5.3.0",
@@ -25,6 +26,7 @@
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
     "@vitejs/plugin-react": "4.7.0",
+    "playwright": "1.64.1",
     "typescript": "5.6.3",
     "vite": "6.4.3"
   }

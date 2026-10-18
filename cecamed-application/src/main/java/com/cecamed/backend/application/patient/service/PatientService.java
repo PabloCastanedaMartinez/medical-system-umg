@@ -37,28 +37,31 @@ public class PatientService implements PatientManagementUseCase {
 
     @Override
     public PatientResponse createPatient(PatientRequest request, String performedBy, String ipAddress, String userAgent) {
-        String identificationNumber = request.getIdentificationNumber();
+        if (request.allergies() == null || request.allergies().isBlank())
+            throw new IllegalArgumentException("Declare las alergias conocidas, ninguna o desconocidas.");
+        if (!request.isContactProvided()) throw new IllegalArgumentException("Debe proporcionar teléfono o correo.");
+        String identificationNumber = request.identificationNumber();
 
         // La identificación es opcional; el dominio la normaliza.
         Patient patient = Patient.createNew(
                 clock,
                 identificationNumber,
-                request.getFirstName(),
-                request.getLastName(),
-                request.getBirthDate(),
-                request.getGender(),
-                request.getBloodType(),
-                request.getPhone(),
-                request.getEmail(),
-                request.getAddress(),
-                request.getEmergencyContactName(),
-                request.getEmergencyContactPhone(),
-                request.getEmergencyContactRelationship(),
-                request.getNotes()
+                request.firstName(),
+                request.lastName(),
+                request.birthDate(),
+                request.gender(),
+                request.bloodType(),
+                request.phone(),
+                request.email(),
+                request.address(),
+                request.emergencyContactName(),
+                request.emergencyContactPhone(),
+                request.emergencyContactRelationship(),
+                request.notes()
         );
 
         // Guardar paciente
-        Patient savedPatient = patientRepository.save(patient);
+        Patient savedPatient = patientRepository.saveNew(patient, request.allergies().trim());
 
         // Auditoría de creación
         auditRepository.save(SecurityAuditEvent.of(
@@ -121,29 +124,30 @@ public class PatientService implements PatientManagementUseCase {
 
     @Override
     public PatientResponse updatePatient(Long id, PatientRequest request, String performedBy, String ipAddress, String userAgent) {
+        if (!request.isContactProvided()) throw new IllegalArgumentException("Debe proporcionar teléfono o correo.");
         // Buscar paciente existente
         Patient patient = patientRepository.findById(id)
                 .orElseThrow(() -> new BusinessRuleException("PATIENT_NOT_FOUND",
                         "Paciente no encontrado con ID: " + id));
 
-        if (request.getVersion() == null || !request.getVersion().equals(patient.getVersion())) {
+        if (request.version() == null || !request.version().equals(patient.getVersion())) {
             throw new com.cecamed.backend.domain.patient.StaleVersionException("El paciente cambió. Recargue antes de editar.");
         }
         // Actualizar información (lanza PatientInactiveException si está inactivo)
         patient.updateInformation(
                 clock,
-                request.getFirstName(),
-                request.getLastName(),
-                request.getBirthDate(),
-                request.getGender(),
-                request.getBloodType(),
-                request.getPhone(),
-                request.getEmail(),
-                request.getAddress(),
-                request.getEmergencyContactName(),
-                request.getEmergencyContactPhone(),
-                request.getEmergencyContactRelationship(),
-                request.getNotes()
+                request.firstName(),
+                request.lastName(),
+                request.birthDate(),
+                request.gender(),
+                request.bloodType(),
+                request.phone(),
+                request.email(),
+                request.address(),
+                request.emergencyContactName(),
+                request.emergencyContactPhone(),
+                request.emergencyContactRelationship(),
+                request.notes()
         );
 
         // Guardar cambios
@@ -244,7 +248,7 @@ public class PatientService implements PatientManagementUseCase {
         String createdAt = patient.getCreatedAt().toString();
         String updatedAt = patient.getUpdatedAt().toString();
 
-        var response = new PatientResponse(
+        return new PatientResponse(
                 patient.getId(),
                 patient.getIdentificationNumber(),
                 patient.getFirstName(),
@@ -264,9 +268,8 @@ public class PatientService implements PatientManagementUseCase {
                 patient.isActive(),
                 patient.getMedicalRecordNumber(),
                 createdAt,
-                updatedAt
+                updatedAt,
+                patient.getVersion()
         );
-        response.setVersion(patient.getVersion());
-        return response;
     }
 }

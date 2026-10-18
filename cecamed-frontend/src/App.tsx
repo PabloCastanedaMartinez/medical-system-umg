@@ -7,6 +7,10 @@ import { PatientsPage } from './pages/PatientsPage';
 import { MedicalRecordIndex, MedicalRecordPage } from './pages/MedicalRecordPage';
 import { AppointmentsPage } from './pages/AppointmentsPage';
 import { ReceptionPage } from './pages/ReceptionPage';
+import { DoctorsPage } from './pages/DoctorsPage';
+import { UsersPage } from './pages/UsersPage';
+import { PatientAppointmentsPage } from './pages/PatientAppointmentsPage';
+import { DashboardPage } from './pages/DashboardPage';
 import { SettingsPage } from './pages/SettingsPage';
 
 /** Rutas: sustituyen a NavigationService + ViewType de JavaFX. */
@@ -22,8 +26,8 @@ export function App() {
           </RequireAuth>
         }
       >
-        <Route index element={<Navigate to={user?.role === 'ADMIN' ? '/configuracion' : '/pacientes'} replace />} />
-        <Route path="pacientes" element={<RequireRole roles={['MEDICO', 'RECEPCION']}><PatientsPage /></RequireRole>} />
+        <Route index element={user?.role === 'PACIENTE' ? <Navigate to='/mis-citas' replace /> : <DashboardPage />} />
+        <Route path="pacientes" element={<RequireRole roles={['MEDICO', 'RECEPCION', 'ADMIN']}><PatientsPage /></RequireRole>} />
         <Route
           path="expediente"
           element={
@@ -40,8 +44,12 @@ export function App() {
             </RequireRole>
           }
         />
-        <Route path="agenda" element={<RequireRole roles={['MEDICO', 'RECEPCION']}><AppointmentsPage /></RequireRole>} />
-        <Route path="recepcion" element={<RequireRole roles={['MEDICO', 'RECEPCION']}><ReceptionPage /></RequireRole>} />
+        <Route path="agenda" element={<RequireRole roles={['MEDICO', 'RECEPCION', 'ADMIN']}><AppointmentsPage /></RequireRole>} />
+        <Route path="recepcion" element={<RequireRole roles={['RECEPCION', 'ADMIN']}><ReceptionPage /></RequireRole>} />
+        <Route path="medicos" element={<RequireRole roles={['RECEPCION', 'ADMIN']}><DoctorsPage /></RequireRole>} />
+        <Route path="usuarios" element={<RequireRole roles={['ADMIN']}><UsersPage /></RequireRole>} />
+        <Route path="mis-citas" element={<RequireRole roles={['PACIENTE']}><PatientAppointmentsPage /></RequireRole>} />
+        <Route path="pacientes/:patientId/citas" element={<RequireRole roles={['MEDICO', 'RECEPCION', 'ADMIN']}><PatientAppointmentsPage /></RequireRole>} />
         <Route path="configuracion" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

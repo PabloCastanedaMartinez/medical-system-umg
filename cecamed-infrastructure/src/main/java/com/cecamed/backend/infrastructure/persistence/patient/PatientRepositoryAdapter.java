@@ -37,14 +37,20 @@ public class PatientRepositoryAdapter implements PatientRepositoryPort {
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public Patient save(Patient patient) {
+    @Transactional
+    public Patient save(Patient patient) { return persist(patient, null); }
+
+    @Override
+    @Transactional
+    public Patient saveNew(Patient patient, String allergies) { return persist(patient, allergies); }
+
+    private Patient persist(Patient patient, String allergies) {
         try {
             PatientJpaEntity entity = PatientJpaEntity.fromDomain(patient);
             PatientJpaEntity saved = repository.saveAndFlush(entity);
             if (patient.getId() == null) {
                 entityManager.persist(new com.cecamed.backend.infrastructure.persistence.record.MedicalRecordJpaEntity(
-                    saved.getId(), saved.getMedicalRecordNumber(), null, null, null, null, null, null,
+                    saved.getId(), saved.getMedicalRecordNumber(), allergies, null, null, null, null, null,
                     null, null, null, null, null, saved.getCreatedAt(), saved.getUpdatedAt(), null));
                 entityManager.flush();
             }

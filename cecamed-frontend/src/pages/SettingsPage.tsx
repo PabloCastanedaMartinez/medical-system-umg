@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { CalendarX, Moon, Plus, Sun, Trash2 } from 'lucide-react';
-import { apiBaseUrl, scheduleApi, systemApi } from '../api/endpoints';
+import { apiBaseUrl, scheduleApi, systemApi, doctorsApi } from '../api/endpoints';
 import { useAuth } from '../auth/AuthContext';
 import { errorMessage } from '../api/client';
 import type { BlockType, ScheduleBlock } from '../api/types';
@@ -33,7 +33,7 @@ export function SettingsPage() {
         subtitle="Apariencia, horarios de atención y bloqueos de agenda"
       />
       <div className="tabs" role="tablist">
-        {TABS.filter((t) => user?.role !== 'ADMIN' || t.id === 'appearance' || t.id === 'system').map((t) => (
+        {TABS.filter((t) => ['RECEPCION', 'ADMIN'].includes(user?.role ?? '') || t.id !== 'blocks').map((t) => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
             {t.label}
           </button>
@@ -99,6 +99,7 @@ function SchedulesTab() {
           <table className="table">
             <thead>
               <tr>
+                <th>Médico</th>
                 <th>Día</th>
                 <th>Inicio</th>
                 <th>Cierre</th>
@@ -109,6 +110,7 @@ function SchedulesTab() {
             <tbody>
               {schedules.map((s) => (
                 <tr key={s.id ?? s.dayOfWeek}>
+                  <td>{s.doctorName}</td>
                   <td className="strong">{DAY_LABEL[s.dayOfWeek]}</td>
                   <td className="mono">{formatLocalTime(s.startTime)}</td>
                   <td className="mono">{formatLocalTime(s.endTime)}</td>
@@ -127,6 +129,8 @@ function SchedulesTab() {
 }
 
 function BlocksTab() {
+  const doctors = useApi(() => doctorsApi.list(), []);
+  const [doctorId, setDoctorId] = useState<number | ''>('');
   const toast = useToast();
   const { confirm } = useConfirm();
   const today = toIsoDate(clinicNow());
@@ -145,6 +149,7 @@ function BlocksTab() {
 
   const onCreate = async (e: FormEvent) => {
     e.preventDefault();
+    if (doctorId === '') { toast.warning('Seleccione médico', 'Indique a quién corresponde el bloqueo'); return; }
     if (!form.title.trim()) {
       toast.warning('Campo obligatorio', 'Ingrese un título descriptivo para el bloqueo');
       return;
@@ -162,6 +167,7 @@ function BlocksTab() {
     setSaving(true);
     try {
       await scheduleApi.createBlock({
+        doctorId,
         title: form.title.trim(),
         blockType: form.blockType,
         startDateTime: start,
@@ -201,6 +207,10 @@ function BlocksTab() {
       <h3 className="section-title">Nuevo bloqueo (descansos, vacaciones o actividades)</h3>
       <form onSubmit={onCreate} noValidate>
         <fieldset className="form-section" disabled={saving}>
+          <Field label="Médico" htmlFor="block-doctor" required><select id="block-doctor" value={doctorId} onChange={(e) => setDoctorId(e.target.value ? Number(e.target.value) : '')}>
+            <option value="">Seleccione médico...</option>{doctors.data?.map((d) => <option key={d.id} value={d.id}>{d.fullName}</option>)}
+          </select></Field>
+          {doctors.error && <ErrorBanner message={doctors.error} onRetry={doctors.reload} />}
           <div className="form-grid form-grid-3">
             <Field label="Motivo" htmlFor="bl-title" required>
               <input id="bl-title" maxLength={150} value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="ej. Almuerzo, Congreso médico" />
@@ -247,6 +257,7 @@ function BlocksTab() {
           <table className="table">
             <thead>
               <tr>
+                <th>Médico</th>
                 <th>Motivo</th>
                 <th>Tipo</th>
                 <th>Desde</th>
@@ -257,6 +268,7 @@ function BlocksTab() {
             <tbody>
               {(data ?? []).map((b) => (
                 <tr key={b.id}>
+                  <td>{b.doctorName}</td>
                   <td className="strong">
                     {b.title}
                     {b.reason && <div className="muted small">{b.reason}</div>}

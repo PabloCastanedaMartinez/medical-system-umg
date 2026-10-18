@@ -6,7 +6,19 @@ import { useTheme } from '../theme/ThemeContext';
 import { useToast } from '../components/Toast';
 import { Spinner } from '../components/Common';
 import { BrandMark } from '../components/BrandMark';
+import type { UserRole } from '../api/types';
 import { errorMessage } from '../api/client';
+
+function destination(role: UserRole, requested: string): string {
+  const section = '/' + requested.split('/')[1]?.split('?')[0];
+  const allowed: Record<UserRole, string[]> = {
+    PACIENTE: ['/mis-citas', '/configuracion'],
+    MEDICO: ['/', '/agenda', '/pacientes', '/expediente', '/configuracion'],
+    RECEPCION: ['/', '/agenda', '/recepcion', '/pacientes', '/medicos', '/configuracion'],
+    ADMIN: ['/', '/agenda', '/recepcion', '/pacientes', '/medicos', '/usuarios', '/configuracion'],
+  };
+  return allowed[role].includes(section) ? requested : role === 'PACIENTE' ? '/mis-citas' : '/';
+}
 
 /** Equivalente de login.fxml / LoginController. */
 export function LoginPage() {
@@ -24,7 +36,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   if (!checking && user) {
-    return <Navigate to={from} replace />;
+    return <Navigate to={destination(user.role, from)} replace />;
   }
 
   const doLogin = async (u: string, p: string) => {
@@ -41,7 +53,7 @@ export function LoginPage() {
     try {
       const session = await login(u, p);
       toast.success('Sesión iniciada', `${session.fullName}, ${session.roleDisplayName.toLowerCase()}`);
-      navigate(from, { replace: true });
+      navigate(destination(session.role, from), { replace: true });
     } catch (err) {
       setError(errorMessage(err));
     } finally {

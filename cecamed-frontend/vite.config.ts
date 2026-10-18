@@ -14,7 +14,8 @@ export default defineConfig(({ mode }) => ({
   server: {
     port: 5173,
     proxy: {
-      '/api': { target: apiTarget, changeOrigin: true },
+      // Conservar Host mantiene el proxy como mismo origen para Spring Security.
+      '/api': { target: apiTarget, changeOrigin: false },
     },
   },
   build: {

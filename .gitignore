@@ -1,12 +1,56 @@
+# Gradle y Java (todos los módulos)
 .gradle/
-**/build/
+.kotlin/
+build/
+out/
+*.class
+hs_err_pid*
+replay_pid*
+*.hprof
+
+# React, Vite y TypeScript
+node_modules/
+dist/
+*.tsbuildinfo
+.vite/
+
+# Reportes de pruebas y cobertura
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# IDE y editores
 .idea/
+.vscode/
 *.iml
+*.ipr
+*.iws
+*.swp
+*.swo
+*~
+*.bak
+*.backup
+
+# Entorno local y credenciales; conservar plantillas de ejemplo
 .env
 .env.*
 !.env.example
-uploads/
-logs/
 credentials*.json
 tokens/
+.aws/
+
+# Archivos de ejecución y adjuntos clínicos
+uploads/
+logs/
+*.log
+*.log.*
+
+# Cachés de scripts auxiliares
+__pycache__/
+*.py[cod]
+
+# Archivos del sistema operativo
 .DS_Store
+Thumbs.db
+Desktop.ini

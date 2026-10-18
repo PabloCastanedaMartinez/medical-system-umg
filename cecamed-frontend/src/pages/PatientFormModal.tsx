@@ -17,6 +17,7 @@ interface Props {
 }
 
 interface FormState {
+  allergies: string;
   firstName: string;
   lastName: string;
   birthDate: string;
@@ -32,6 +33,7 @@ interface FormState {
 }
 
 const EMPTY: FormState = {
+  allergies: '',
   firstName: '',
   lastName: '',
   birthDate: '',
@@ -48,6 +50,7 @@ const EMPTY: FormState = {
 
 function fromPatient(p: Patient): FormState {
   return {
+    allergies: '',
     firstName: p.firstName ?? '',
     lastName: p.lastName ?? '',
     birthDate: p.birthDate ?? '',
@@ -86,6 +89,8 @@ export function PatientFormModal({ open, patient, onClose, onSaved }: Props) {
     if (!form.lastName.trim()) return 'El apellido del paciente es obligatorio';
     if (!form.birthDate) return 'La fecha de nacimiento es obligatoria';
     if (form.birthDate > today) return 'La fecha de nacimiento no puede ser futura';
+    if (!form.phone.trim() && !form.email.trim()) return 'Ingrese teléfono o correo de contacto';
+    if (!isEdit && !form.allergies.trim()) return 'Declare las alergias conocidas, ninguna o desconocidas';
     if (!form.gender) return 'El género/sexo es obligatorio';
     if (form.email.trim() && !/^[A-Za-z0-9+_.-]+@(.+)$/.test(form.email.trim()))
       return 'El formato del correo electrónico es inválido';
@@ -101,6 +106,7 @@ export function PatientFormModal({ open, patient, onClose, onSaved }: Props) {
     }
     const body: PatientRequest = {
       version: patient?.version,
+      allergies: isEdit ? undefined : form.allergies.trim(),
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
       birthDate: form.birthDate,
@@ -227,6 +233,11 @@ export function PatientFormModal({ open, patient, onClose, onSaved }: Props) {
           </Field>
         </fieldset>
 
+        {!isEdit && <Field label="Alergias conocidas" htmlFor="patient-allergies" required>
+          <textarea id="patient-allergies" maxLength={2000} value={form.allergies}
+            onChange={(e) => set('allergies', e.target.value)}
+            placeholder="Describa las alergias, indique sin alergias conocidas o desconocidas" />
+        </Field>}
         {error && (
           <div className="alert alert-danger" role="alert">
             {error}

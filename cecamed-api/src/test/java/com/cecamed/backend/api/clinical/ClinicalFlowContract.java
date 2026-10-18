@@ -9,8 +9,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import tools.jackson.databind.json.JsonMapper;
-import tools.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import javax.sql.DataSource;
 import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /** El mismo contrato se ejecuta con H2 y con PostgreSQL/Flyway reales. */
 abstract class ClinicalFlowContract {
     @Autowired MockMvc mvc;
-    @Autowired JsonMapper json;
+    @Autowired ObjectMapper json;
     @Autowired UserManagementUseCase users;
     @Autowired DataSource dataSource;
     String username;
@@ -29,7 +29,7 @@ abstract class ClinicalFlowContract {
     static final String PASSWORD = "Clinical-Test-482!";
     static final String PATIENT = """
         {"firstName":"Ana","lastName":"Prueba","birthDate":"2000-01-02",
-         "gender":"FEMENINO","bloodType":"DESCONOCIDO"}
+         "gender":"FEMENINO","bloodType":"DESCONOCIDO","phone":"55551234","allergies":"Sin alergias conocidas"}
         """;
     static final String CONSULTATION = """
         {"consultationType":"GENERAL","doctorName":"Doctora Prueba","reasonForVisit":"Control",
@@ -43,8 +43,8 @@ abstract class ClinicalFlowContract {
                 "test", "127.0.0.1", "clinical-contract"));
         var result = call(post("/api/v1/auth/login"),
                 json.writeValueAsString(java.util.Map.of("username", username, "password", PASSWORD)), 200);
-        token = result.get("accessToken").asString();
-        refreshToken = result.get("refreshToken").asString();
+        token = result.get("accessToken").asText();
+        refreshToken = result.get("refreshToken").asText();
     }
 
     JsonNode call(MockHttpServletRequestBuilder request, String body, int status) throws Exception {
@@ -61,35 +61,35 @@ abstract class ClinicalFlowContract {
         var patient = call(post("/api/v1/patients"), PATIENT, 201);
         long id = patient.get("id").asLong();
         assertThat(patient.get("version").asLong()).isZero();
-        assertThat(patient.get("createdAt").asString()).endsWith("Z");
+        assertThat(patient.get("createdAt").asText()).endsWith("Z");
         String patientPath = "/api/v1/patients/" + id;
         var record = call(get(patientPath + "/medical-record"), null, 200);
-        assertThat(record.get("recordNumber").asString()).isEqualTo(patient.get("medicalRecordNumber").asString());
+        assertThat(record.get("recordNumber").asText()).isEqualTo(patient.get("medicalRecordNumber").asText());
         var updatedRecord = call(put(patientPath + "/medical-record"), "{\"allergies\":\"Penicilina\",\"version\":0}", 200);
         assertThat(updatedRecord.get("version").asLong()).isEqualTo(1);
         call(put(patientPath + "/medical-record"), "{\"allergies\":\"Obsoleto\",\"version\":0}", 409);
         call(put(patientPath + "/medical-record"), "{\"allergies\":\"Sin versión\"}", 400);
-        assertThat(call(get(patientPath + "/medical-record"), null, 200).get("allergies").asString()).isEqualTo("Penicilina");
+        assertThat(call(get(patientPath + "/medical-record"), null, 200).get("allergies").asText()).isEqualTo("Penicilina");
 
         String update = PATIENT.trim().replace("\"Ana\"", "\"Ana Actualizada\"");
         update = update.substring(0, update.length()-1) + ",\"version\":0}";
         var updated = call(put(patientPath), update, 200);
         assertThat(updated.get("version").asLong()).isEqualTo(1);
-        assertThat(updated.get("createdAt").asString()).isEqualTo(patient.get("createdAt").asString());
+        assertThat(updated.get("createdAt").asText()).isEqualTo(patient.get("createdAt").asText());
         call(put(patientPath), update, 409);
         call(put(patientPath), PATIENT, 400);
 
         var consultation = call(post(patientPath + "/consultations"), CONSULTATION, 201);
         long consultationId = consultation.get("consultationId").asLong();
         assertThat(consultationId).isPositive();
-        assertThat(consultation.get("consultationDate").asString()).endsWith("Z");
+        assertThat(consultation.get("consultationDate").asText()).endsWith("Z");
         String consultationPath = patientPath + "/consultations/" + consultationId;
         String edit = CONSULTATION.trim();
         edit = edit.substring(0,edit.length()-1) + ",\"version\":0}";
         assertThat(call(put(consultationPath), edit, 200).get("version").asLong()).isEqualTo(1);
         call(put(consultationPath), edit, 409);
         call(put(consultationPath), CONSULTATION, 400);
-        assertThat(call(get(consultationPath), null, 200).get("icd10Code").asString()).isEqualTo("Z00");
+        assertThat(call(get(consultationPath), null, 200).get("icd10Code").asText()).isEqualTo("Z00");
         var second = call(post(patientPath + "/consultations"), CONSULTATION, 201);
         assertThat(second.get("consultationId").asLong()).isNotEqualTo(consultationId);
         assertThat(call(get(patientPath + "/consultations"), null, 200).size()).isEqualTo(2);
@@ -159,10 +159,10 @@ abstract class ClinicalFlowContract {
     @Test
     void refreshRotatesAndLogoutRevokesTheActualToken() throws Exception {
         var refreshed = call(post("/api/v1/auth/refresh"), json.writeValueAsString(java.util.Map.of("refreshToken", refreshToken)), 200);
-        assertThat(refreshed.get("refreshToken").asString()).isNotEqualTo(refreshToken);
-        token = refreshed.get("accessToken").asString();
+        assertThat(refreshed.get("refreshToken").asText()).isNotEqualTo(refreshToken);
+        token = refreshed.get("accessToken").asText();
         call(get("/api/v1/auth/me"), null, 200);
-        String body = json.writeValueAsString(java.util.Map.of("refreshToken", refreshed.get("refreshToken").asString()));
+        String body = json.writeValueAsString(java.util.Map.of("refreshToken", refreshed.get("refreshToken").asText()));
         call(post("/api/v1/auth/logout"), body, 204);
         call(post("/api/v1/auth/refresh"), body, 401);
     }
@@ -173,10 +173,10 @@ abstract class ClinicalFlowContract {
         for (Role role : new Role[]{Role.RECEPCION, Role.ADMIN}) {
             var name = role.name() + UUID.randomUUID().toString().replace("-", "");
             users.createUser(new CreateUserCommand(name, PASSWORD, "Usuario", role, "test", "127.0.0.1", "test"));
-            token = call(post("/api/v1/auth/login"), json.writeValueAsString(java.util.Map.of("username", name, "password", PASSWORD)), 200).get("accessToken").asString();
+            token = call(post("/api/v1/auth/login"), json.writeValueAsString(java.util.Map.of("username", name, "password", PASSWORD)), 200).get("accessToken").asText();
             call(get("/api/v1/patients/" + patient.get("id").asLong() + "/medical-record"), null, 403);
             call(get("/api/v1/patients/" + patient.get("id").asLong() + "/consultations"), null, 403);
-            call(get("/api/v1/patients"), null, role == Role.ADMIN ? 403 : 200);
+            call(get("/api/v1/patients"), null, 200);
         }
     }
 }

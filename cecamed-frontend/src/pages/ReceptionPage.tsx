@@ -13,7 +13,7 @@ import { endOfDay, formatElapsed, formatLongDate, formatTime, parseLocalDateTime
 import { APPOINTMENT_STATUS, isClosedForReception } from '../utils/labels';
 import { AppointmentFormModal, type AppointmentFormMode } from './AppointmentFormModal';
 
-const FILTERS: AppointmentStatus[] = ['PROGRAMADA', 'CONFIRMADA', 'EN_SALA', 'ATENDIDA', 'NO_ASISTIO', 'CANCELADA'];
+const FILTERS: AppointmentStatus[] = ['PENDIENTE', 'PROGRAMADA', 'CONFIRMADA', 'EN_SALA', 'ATENDIDA', 'NO_ASISTIO', 'CANCELADA'];
 
 /**
  * Hora de llegada a sala: la registra el backend en `checkedInAt` al pasar la cita a EN_SALA.
@@ -56,7 +56,7 @@ export function ReceptionPage() {
       total: all.length,
       waiting: all.filter((a) => a.status === 'EN_SALA').length,
       done: all.filter((a) => a.status === 'ATENDIDA').length,
-      pending: all.filter((a) => a.status === 'PROGRAMADA' || a.status === 'CONFIRMADA').length,
+      pending: all.filter((a) => a.status === 'PENDIENTE' || a.status === 'PROGRAMADA' || a.status === 'CONFIRMADA').length,
     }),
     [all],
   );
@@ -82,7 +82,7 @@ export function ReceptionPage() {
   const updateStatus = async (a: Appointment, status: AppointmentStatus, successMsg: string) => {
     setBusyId(a.id);
     try {
-      await appointmentsApi.updateStatus(a.id, status);
+      await appointmentsApi.updateStatus(a.id, status, a.version);
       toast.success('Recepción', successMsg);
       reload();
     } catch (err) {
@@ -174,6 +174,7 @@ export function ReceptionPage() {
                 <thead>
                   <tr>
                     <th>Hora</th>
+                    <th>Médico</th>
                     <th>Paciente</th>
                     <th>Teléfono</th>
                     <th>Motivo</th>
@@ -188,6 +189,7 @@ export function ReceptionPage() {
                     return (
                       <tr key={a.id}>
                         <td className="mono nowrap">{formatTime(a.startTime)}</td>
+                        <td>{a.doctorName}</td>
                         <td className="strong">{a.patientFullName ?? 'Paciente no asignado'}</td>
                         <td className="nowrap">{a.patientPhone || '-'}</td>
                         <td>{a.reasonForVisit ?? '-'}</td>
@@ -196,12 +198,12 @@ export function ReceptionPage() {
                         </td>
                         <td className="col-actions">
                           <div className="row-actions">
-                            {a.status === 'PROGRAMADA' && (
+                            {(a.status === 'PENDIENTE' || a.status === 'PROGRAMADA') && (
                               <button className="icon-button" title="Confirmar asistencia" aria-label="Confirmar asistencia" disabled={busy} onClick={() => updateStatus(a, 'CONFIRMADA', 'Cita confirmada')}>
                                 <ThumbsUp size={15} />
                               </button>
                             )}
-                            {(a.status === 'PROGRAMADA' || a.status === 'CONFIRMADA' || a.status === 'REPROGRAMADA') && (
+                            {(a.status === 'CONFIRMADA') && (
                               <button
                                 className="btn btn-accent btn-xs"
                                 disabled={busy}
@@ -214,21 +216,21 @@ export function ReceptionPage() {
                               <button
                                 className="btn btn-primary btn-xs"
                                 disabled={busy}
-                                onClick={() => updateStatus(a, 'ATENDIDA', 'Paciente ingresado a consulta con el médico')}
+                                onClick={() => updateStatus(a, 'ATENDIDA', 'Atención médica finalizada')}
                               >
-                                <ArrowRightCircle size={13} aria-hidden /> A consulta
+                                <ArrowRightCircle size={13} aria-hidden /> Finalizar atención
                               </button>
                             )}
                             {!closed && (
                               <>
-                                <button className="icon-button text-danger" title="Marcar que no asistió" aria-label="Marcar que no asistió" disabled={busy} onClick={() => noShow(a)}>
+                                <button className="icon-button text-danger" title="Marcar que no asistió" aria-label="Marcar que no asistió" disabled={busy || a.status === 'EN_SALA'} onClick={() => noShow(a)}>
                                   <UserX size={15} />
                                 </button>
                                 <button
                                   className="icon-button"
                                   title="Reprogramar cita"
                                   aria-label="Reprogramar cita"
-                                  disabled={busy}
+                                  disabled={busy || !['PENDIENTE', 'CONFIRMADA', 'PROGRAMADA'].includes(a.status)}
                                   onClick={() => {
                                     setFormMode({ kind: 'reschedule', appointment: a });
                                     setFormOpen(true);
@@ -275,9 +277,9 @@ export function ReceptionPage() {
                     <button
                       className="btn btn-primary btn-xs"
                       disabled={busyId === a.id}
-                      onClick={() => updateStatus(a, 'ATENDIDA', `Paciente ${a.patientFullName} pasó al consultorio médico`)}
+                      onClick={() => updateStatus(a, 'ATENDIDA', `Paciente ${a.patientFullName} finalizó la atención`)}
                     >
-                      <Check size={13} aria-hidden /> Pasar a consulta
+                      <Check size={13} aria-hidden /> Finalizar atención
                     </button>
                   </li>
                 );

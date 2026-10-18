@@ -1,6 +1,6 @@
 import { API_BASE_URL, request, requestBlob, setSession, endSession } from './client';
 import type {
-  PagedResult, ConsultationResponse,
+  PagedResult, ConsultationResponse, Doctor, DoctorRequest, UserAccount, UserRole,
   Appointment,
   AppointmentRequest,
   AppointmentReschedule,
@@ -118,17 +118,18 @@ export const documentsApi = {
 };
 
 export const appointmentsApi = {
-  list: (start: string, end: string, status?: AppointmentStatus | null, signal?: AbortSignal) =>
-    request<Appointment[]>('/appointments', { query: { start, end, status }, signal }),
-  availableSlots: (date: string) => request<AvailableSlot[]>('/appointments/available-slots', { query: { date } }),
+  list: (start: string, end: string, status?: AppointmentStatus | null, signal?: AbortSignal, doctorId?: number) =>
+    request<Appointment[]>('/appointments', { query: { start, end, status, doctorId }, signal }),
+  availableSlots: (date: string, doctorId: number, excludingId?: number, signal?: AbortSignal) =>
+    request<AvailableSlot[]>('/appointments/available-slots', { query: { date, doctorId, excludingId }, signal }),
   create: (body: AppointmentRequest) => request<Appointment>('/appointments', { method: 'POST', body }),
   reschedule: (id: number, body: AppointmentReschedule) =>
     request<Appointment>(`/appointments/${id}/reschedule`, { method: 'PUT', body }),
-  cancel: (id: number, reason: string) =>
-    request<Appointment>(`/appointments/${id}/cancel`, { method: 'POST', body: { reason } }),
-  complete: (id: number) => request<Appointment>(`/appointments/${id}/complete`, { method: 'POST' }),
-  updateStatus: (id: number, status: AppointmentStatus) =>
-    request<Appointment>(`/appointments/${id}/status`, { method: 'PATCH', body: { status } }),
+  cancel: (id: number, reason: string, version: number) =>
+    request<Appointment>(`/appointments/${id}/cancel`, { method: 'POST', body: { reason, version } }),
+  complete: (id: number, version: number) => request<Appointment>(`/appointments/${id}/status`, { method: 'PATCH', body: { status: 'ATENDIDA', version } }),
+  updateStatus: (id: number, status: AppointmentStatus, version: number) =>
+    request<Appointment>(`/appointments/${id}/status`, { method: 'PATCH', body: { status, version } }),
 };
 
 export const scheduleApi = {
@@ -160,3 +161,25 @@ function toConsultation(c: ConsultationResponse): Consultation {
     updatedAt: c.updatedAt, version: c.version,
   };
 }
+
+export const doctorsApi = {
+  list: () => request<Doctor[]>('/doctors'),
+  create: (body: DoctorRequest) => request<Doctor>('/doctors', { method: 'POST', body }),
+  update: (id: number, body: DoctorRequest) => request<Doctor>(`/doctors/${id}`, { method: 'PUT', body }),
+  today: () => request<Appointment[]>('/doctors/me/agenda'),
+};
+export const portalApi = {
+  profile: () => request<Patient>('/portal/me'),
+  history: () => request<Appointment[]>('/portal/appointments'),
+  create: (body: AppointmentRequest) => request<Appointment>('/portal/appointments', { method: 'POST', body: {
+    doctorId: body.doctorId, startTime: body.startTime, endTime: body.endTime, reasonForVisit: body.reasonForVisit,
+  } }),
+  grantAccess: (patientId: number, username: string, password: string) =>
+    request<void>(`/patients/${patientId}/portal-access`, { method: 'POST', body: { username, password } }),
+};
+export const usersApi = {
+  list: () => request<PagedResult<UserAccount>>('/users', { query: { size: 100 } }),
+  create: (body: { username: string; password: string; fullName: string; role: UserRole }) =>
+    request<UserAccount>('/users', { method: 'POST', body }),
+  setActive: (user: UserAccount) => request<UserAccount>(`/users/${user.id}/${user.active ? 'deactivate' : 'activate'}`, { method: 'PATCH' }),
+};

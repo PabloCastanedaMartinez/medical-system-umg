@@ -11,6 +11,7 @@ import type {
 export type Tone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 
 export const APPOINTMENT_STATUS: Record<AppointmentStatus, { label: string; tone: Tone }> = {
+  PENDIENTE: { label: 'Pendiente de confirmación', tone: 'warning' },
   PROGRAMADA: { label: 'Programada', tone: 'info' },
   CONFIRMADA: { label: 'Confirmada', tone: 'success' },
   EN_SALA: { label: 'En sala', tone: 'warning' },
@@ -21,6 +22,7 @@ export const APPOINTMENT_STATUS: Record<AppointmentStatus, { label: string; tone
 };
 
 export const APPOINTMENT_STATUS_ORDER: AppointmentStatus[] = [
+  'PENDIENTE',
   'PROGRAMADA',
   'CONFIRMADA',
   'EN_SALA',
