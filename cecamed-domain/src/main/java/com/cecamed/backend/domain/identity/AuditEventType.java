@@ -11,5 +11,10 @@ public enum AuditEventType {
     USER_UPDATED,
     USER_ACTIVATED,
     USER_DEACTIVATED,
-    PASSWORD_RESET
+    PASSWORD_RESET,
+    // Nuevos tipos de evento para pacientes
+    PATIENT_CREATED,
+    PATIENT_UPDATED,
+    PATIENT_ACTIVATED,
+    PATIENT_DEACTIVATED
 }
