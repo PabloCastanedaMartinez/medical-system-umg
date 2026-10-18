@@ -20,19 +20,21 @@ public class PatientRequest {
     private String lastName;
 
     @NotNull
-    @Past
-    private String birthDate; // formato ISO-8601 (yyyy-MM-dd)
+    private java.time.LocalDate birthDate; // formato ISO-8601 (yyyy-MM-dd)
 
     @NotBlank
+    @jakarta.validation.constraints.Pattern(regexp = "MASCULINO|FEMENINO")
     private String gender; // valores esperados: MASCULINO, FEMENINO
 
     @NotBlank
+    @jakarta.validation.constraints.Pattern(regexp = "(A|B|AB|O)_(POSITIVO|NEGATIVO)|DESCONOCIDO")
     private String bloodType; // valores esperados según enum del frontend
 
     @Size(max = 25)
     private String phone;
 
     @Size(max = 100)
+    @jakarta.validation.constraints.Email
     private String email;
 
     @Size(max = 255)
@@ -50,7 +52,14 @@ public class PatientRequest {
     @Size(max = 500)
     private String notes;
 
-    // Getters and Setters
+    private Long version;
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
+    @Size(max = 50)
+    private String identificationNumber;
+    public String getIdentificationNumber() { return identificationNumber; }
+    public void setIdentificationNumber(String value) { identificationNumber = value; }
+
     public String getFirstName() {
         return firstName;
     }
@@ -67,11 +76,11 @@ public class PatientRequest {
         this.lastName = lastName;
     }
 
-    public String getBirthDate() {
+    public java.time.LocalDate getBirthDate() {
         return birthDate;
     }
 
-    public void setBirthDate(String birthDate) {
+    public void setBirthDate(java.time.LocalDate birthDate) {
         this.birthDate = birthDate;
     }
 

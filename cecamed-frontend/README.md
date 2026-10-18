@@ -7,8 +7,8 @@ Interfaz web de CECAMed construida con **React 18, TypeScript y Vite**. Reemplaz
 | Parte | Estado |
 | --- | --- |
 | Pantallas | Listas: acceso, panel principal, pacientes, expediente clínico (antecedentes, consultas, nueva consulta, citas y documentos), agenda, recepción con sala de espera y configuración. Tema claro/oscuro y diseño adaptable a celular. |
-| Conexión con `cecamed-api` | Preparada para `/api/v1`, errores *Problem Details* y token `Authorization: Bearer`. |
-| Endpoints de negocio | Pendientes en el backend. Lo que el frontend espera está en [docs/contrato-api-esperado.md](docs/contrato-api-esperado.md). |
+| Conexión con `cecamed-api` | Integrada con `/api/v1`, errores *Problem Details*, Bearer, refresh rotatorio y logout con revocación. |
+| Endpoints de negocio | Pacientes, expediente y consultas básicas integrados con la API real; agenda, recepción y documentos pendientes del incremento 2. Contrato vigente: [api-contract.md](../docs/api-contract.md). |
 | API simulada | `npm run dev:mock` permite usar todas las pantallas con datos de ejemplo mientras el backend avanza. |
 
 ## Requisitos
@@ -95,3 +95,15 @@ docs/
 - **Fechas:** usar las funciones de `utils/format.ts`. La interfaz muestra y envía la hora de la clínica (`America/Guatemala`) como instantes ISO 8601 con offset, sin importar la zona del equipo. Para "ahora" se usa `clinicNow()`, no `new Date()`.
 - **Roles:** el expediente clínico, las consultas y los documentos son solo para el perfil médico. El backend debe validarlo también.
 - **Si cambia un DTO del backend**, actualizar `src/api/types.ts` y, si aplica, `src/mocks/mockApi.ts`.
+
+## Validación de sesión y contratos
+
+`npm test` verifica rotación compartida, expiración, logout durante refresh y
+fallos de red. `npm run build` valida TypeScript y genera el cliente real;
+`npm run build:mock` verifica también el empaquetado del simulador, que conserva
+`@ts-nocheck` y no sustituye pruebas contra PostgreSQL. ADMIN tiene acceso a
+configuración; pacientes son para MEDICO/RECEPCION y contenido clínico para MEDICO.
+
+El listado de pacientes usa paginación del servidor. Las ediciones conservan la
+versión leída y muestran conflictos sin sobreescribir datos recientes. El instante
+de consulta se asigna en el servidor; no existe un selector de fecha retroactiva.

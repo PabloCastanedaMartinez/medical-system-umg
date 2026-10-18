@@ -67,6 +67,29 @@ class ApiIntegrationTest {
     }
 
     @Test
+    void medicoCanReachClinicalControllers() throws Exception {
+        mvc.perform(get("/api/v1/patients/999999/medical-record")
+                        .with(user("doctor").roles("MEDICO")))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("MEDICAL_RECORD_NOT_FOUND"));
+        mvc.perform(get("/api/v1/patients/999999/consultations")
+                        .with(user("doctor").roles("MEDICO")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void receptionAndAdminCannotReadClinicalData() throws Exception {
+        for (String role : new String[]{"RECEPCION", "ADMIN"}) {
+            for (String resource : new String[]{"medical-record", "consultations", "consultations/1", "documents", "documents/1/content"}) {
+                mvc.perform(get("/api/v1/patients/1/" + resource)
+                                .with(user("restricted").roles(role)))
+                        .andExpect(status().isForbidden())
+                        .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+            }
+        }
+    }
+
+    @Test
     void acceptsPreflightFromConfiguredFrontend() throws Exception {
         mvc.perform(options("/api/v1/patients")
                         .header(HttpHeaders.ORIGIN, "http://localhost:5173")

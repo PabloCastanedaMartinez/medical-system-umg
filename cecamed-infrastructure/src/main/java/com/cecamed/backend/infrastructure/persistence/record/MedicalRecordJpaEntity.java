@@ -129,7 +129,7 @@ public class MedicalRecordJpaEntity {
                 this.waterGlassesPerDay,
                 this.mealsPerDay,
                 this.createdAt,
-                this.updatedAt
+                this.updatedAt, this.version
         );
     }
 

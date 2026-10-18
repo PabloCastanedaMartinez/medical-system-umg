@@ -59,7 +59,7 @@ public interface PatientManagementUseCase {
      * @param ipAddress   dirección IP del usuario
      * @param userAgent   agente de usuario del usuario
      */
-    void activatePatient(Long id, String performedBy, String ipAddress, String userAgent);
+    void activatePatient(Long id, Long version, String performedBy, String ipAddress, String userAgent);
 
     /**
      * Desactiva un paciente activo.
@@ -69,5 +69,5 @@ public interface PatientManagementUseCase {
      * @param ipAddress   dirección IP del usuario
      * @param userAgent   agente de usuario del usuario
      */
-    void deactivatePatient(Long id, String performedBy, String ipAddress, String userAgent);
+    void deactivatePatient(Long id, Long version, String performedBy, String ipAddress, String userAgent);
 }

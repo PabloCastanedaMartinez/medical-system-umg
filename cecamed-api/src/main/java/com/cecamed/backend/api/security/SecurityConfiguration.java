@@ -65,20 +65,20 @@ public class SecurityConfiguration {
                     authorize.requestMatchers("/api/v1/auth/me").authenticated();
                     authorize.requestMatchers("/api/v1/users/**").hasRole("ADMIN");
                     // Medical record endpoints
-                    authorize.requestMatchers(HttpMethod.GET, "/api/v1/patients/**/medical-record").hasRole("MEDICO");
-                    authorize.requestMatchers(HttpMethod.PUT, "/api/v1/patients/**/medical-record").hasRole("MEDICO");
+                    authorize.requestMatchers(HttpMethod.GET, "/api/v1/patients/{patientId}/medical-record").hasRole("MEDICO");
+                    authorize.requestMatchers(HttpMethod.PUT, "/api/v1/patients/{patientId}/medical-record").hasRole("MEDICO");
                     // Consultation endpoints
-                    authorize.requestMatchers(HttpMethod.GET, "/api/v1/patients/**/consultations").hasRole("MEDICO");
-                    authorize.requestMatchers(HttpMethod.POST, "/api/v1/patients/**/consultations").hasRole("MEDICO");
-                    authorize.requestMatchers(HttpMethod.GET, "/api/v1/patients/**/consultations/**").hasRole("MEDICO");
-                    authorize.requestMatchers(HttpMethod.PUT, "/api/v1/patients/**/consultations/**").hasRole("MEDICO");
-                    authorize.requestMatchers(HttpMethod.POST, "/api/v1/patients/**/consultations/**/sign").hasRole("MEDICO");
-                    authorize.requestMatchers(HttpMethod.POST, "/api/v1/patients/**/consultations/**/amendments").hasRole("MEDICO");
+                    authorize.requestMatchers(HttpMethod.GET, "/api/v1/patients/{patientId}/consultations").hasRole("MEDICO");
+                    authorize.requestMatchers(HttpMethod.POST, "/api/v1/patients/{patientId}/consultations").hasRole("MEDICO");
+                    authorize.requestMatchers(HttpMethod.GET, "/api/v1/patients/{patientId}/consultations/**").hasRole("MEDICO");
+                    authorize.requestMatchers(HttpMethod.PUT, "/api/v1/patients/{patientId}/consultations/**").hasRole("MEDICO");
+                    authorize.requestMatchers(HttpMethod.POST, "/api/v1/patients/{patientId}/consultations/{id}/sign").hasRole("MEDICO");
+                    authorize.requestMatchers(HttpMethod.POST, "/api/v1/patients/{patientId}/consultations/{id}/amendments").hasRole("MEDICO");
                     // Document endpoints
-                    authorize.requestMatchers(HttpMethod.GET, "/api/v1/patients/**/documents").hasRole("MEDICO");
-                    authorize.requestMatchers(HttpMethod.POST, "/api/v1/patients/**/documents").hasRole("MEDICO");
-                    authorize.requestMatchers(HttpMethod.GET, "/api/v1/patients/**/documents/**/content").hasRole("MEDICO");
-                    authorize.requestMatchers(HttpMethod.POST, "/api/v1/patients/**/documents/**/deactivate").hasRole("MEDICO");
+                    authorize.requestMatchers(HttpMethod.GET, "/api/v1/patients/{patientId}/documents").hasRole("MEDICO");
+                    authorize.requestMatchers(HttpMethod.POST, "/api/v1/patients/{patientId}/documents").hasRole("MEDICO");
+                    authorize.requestMatchers(HttpMethod.GET, "/api/v1/patients/{patientId}/documents/{id}/content").hasRole("MEDICO");
+                    authorize.requestMatchers(HttpMethod.POST, "/api/v1/patients/{patientId}/documents/{id}/deactivate").hasRole("MEDICO");
                     // Legacy endpoints (to be reviewed)
                     authorize.requestMatchers(
                             "/api/v1/patients/**",

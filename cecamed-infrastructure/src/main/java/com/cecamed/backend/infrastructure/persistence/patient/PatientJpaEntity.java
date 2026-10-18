@@ -119,7 +119,6 @@ public class PatientJpaEntity {
         this.notes = notes;
         this.active = active;
         this.medicalRecordNumber = medicalRecordNumber;
-        // createdAt and updatedAt will be set by @PrePersist and @PreUpdate
     }
 
     /**
@@ -130,7 +129,7 @@ public class PatientJpaEntity {
      * @return entidad JPA
      */
     public static PatientJpaEntity fromDomain(Patient domain) {
-        return new PatientJpaEntity(
+        var entity = new PatientJpaEntity(
                 domain.getId(),
                 domain.getIdentificationNumber(),
                 domain.getFirstName(),
@@ -149,11 +148,15 @@ public class PatientJpaEntity {
                 domain.isActive(),
                 domain.getMedicalRecordNumber()
         );
+        entity.version = domain.getVersion();
+        entity.createdAt = domain.getCreatedAt();
+        entity.updatedAt = domain.getUpdatedAt();
+        return entity;
     }
 
     /**
      * Convierte esta entidad JPA a un objeto de dominio Patient.
-     * Nota: el objeto de dominio no incluye los campos de auditoría ni versión.
+     * Conserva auditoría y versión para la siguiente edición.
      *
      * @return objeto de dominio Patient
      */
@@ -176,19 +179,10 @@ public class PatientJpaEntity {
         patient.setNotes(this.notes);
         patient.setActive(this.active);
         patient.setMedicalRecordNumber(this.medicalRecordNumber);
-        // Los campos de auditoría y versión no se mapean al dominio
+        patient.setVersion(version);
+        patient.setCreatedAt(createdAt);
+        patient.setUpdatedAt(updatedAt);
         return patient;
-    }
-
-    @PrePersist
-    void prePersist() {
-        this.createdAt = Instant.now();
-        this.updatedAt = Instant.now();
-    }
-
-    @PreUpdate
-    void preUpdate() {
-        this.updatedAt = Instant.now();
     }
 
     // Getters y Setters (necessarios para JPA y para el adapter)

@@ -63,18 +63,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             authentication.setDetails(claims);
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            filterChain.doFilter(request, response);
 
         } catch (TokenExpiredException e) {
             SecurityContextHolder.clearContext();
             writeProblem(response, request.getRequestURI(), HttpStatus.UNAUTHORIZED, "TOKEN_EXPIRED", e.getMessage());
+            return;
         } catch (InvalidTokenException e) {
             SecurityContextHolder.clearContext();
             writeProblem(response, request.getRequestURI(), HttpStatus.UNAUTHORIZED, "INVALID_TOKEN", e.getMessage());
+            return;
         } catch (Exception e) {
             SecurityContextHolder.clearContext();
             writeProblem(response, request.getRequestURI(), HttpStatus.UNAUTHORIZED, "AUTHENTICATION_REQUIRED", "Error al procesar la autenticación.");
+            return;
         }
+        filterChain.doFilter(request, response);
     }
 
     private void writeProblem(

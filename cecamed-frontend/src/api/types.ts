@@ -1,7 +1,7 @@
 // Tipos que reflejan los DTO de cecamed-services y cecamed-web.
 // Fechas: LocalDateTime -> "2026-10-15T09:30:00", LocalDate -> "2026-10-15", LocalTime -> "08:00:00".
 
-export type UserRole = 'MEDICO' | 'RECEPCION';
+export type UserRole = 'MEDICO' | 'RECEPCION' | 'ADMIN';
 
 export interface SessionUser {
   username: string;
@@ -25,6 +25,7 @@ export type BloodType =
   | 'DESCONOCIDO';
 
 export interface Patient {
+  version: number;
   id: number;
   firstName: string;
   lastName: string;
@@ -48,6 +49,8 @@ export interface Patient {
 }
 
 export interface PatientRequest {
+  version?: number;
+  identificationNumber?: string | null;
   firstName: string;
   lastName: string;
   birthDate: string;
@@ -119,7 +122,7 @@ export interface AvailableSlot {
 }
 
 export interface MedicalRecord {
-  id: number | null;
+  version: number;
   patientId: number;
   recordNumber: string;
   allergies: string | null;
@@ -165,7 +168,6 @@ export interface PatientDocument {
   originalFileName: string | null;
   fileType: string | null;
   documentType: DocumentType;
-  filePath: string | null;
   fileSizeBytes: number | null;
   checksumSha256: string | null;
   description: string | null;
@@ -174,6 +176,11 @@ export interface PatientDocument {
 }
 
 export interface Consultation {
+  version: number;
+  consultationType: string;
+  doctorName: string;
+  prescriptions: string | null;
+  followUpInstructions: string | null;
   id: number;
   patientId: number;
   patientFullName: string | null;
@@ -193,7 +200,6 @@ export interface Consultation {
 
 export interface ConsultationRequest {
   patientId: number;
-  consultationDateTime: string;
   reason: string;
   symptoms: string | null;
   physicalExamination: string | null;
@@ -258,8 +264,8 @@ export interface SystemInfo {
 
 /** Respuesta esperada de POST /auth/login (pendiente de definir por el backend). */
 export interface LoginResponse extends SessionUser {
-  accessToken?: string;
-  token?: string;
+  accessToken: string;
+  refreshToken: string;
 }
 
 /** Problem Details (RFC 9457) con las propiedades `code` y `errors` del backend. */
@@ -273,4 +279,34 @@ export interface ApiErrorBody {
   errors?: { field: string; message: string }[];
   /** Compatibilidad con respuestas que usen `message`. */
   message?: string;
+}
+
+export interface PagedResult<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+/** Contrato HTTP de consultas; el adaptador conserva los nombres de presentación. */
+export interface ConsultationResponse {
+  consultationId: number;
+  patientId: number;
+  consultationDate: string;
+  consultationType: string;
+  doctorName: string;
+  reasonForVisit: string;
+  symptoms: string | null;
+  examinationFindings: string | null;
+  diagnosis: string;
+  treatmentPlan: string | null;
+  prescriptions: string | null;
+  followUpInstructions: string | null;
+  vitalSigns: string | null;
+  notes: string | null;
+  icd10Code: string | null;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
 }

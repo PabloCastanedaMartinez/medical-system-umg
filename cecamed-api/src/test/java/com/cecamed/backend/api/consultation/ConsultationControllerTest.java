@@ -97,8 +97,8 @@ class ConsultationControllerTest {
                 testConsultation.getVitalSigns(),
                 testConsultation.getNotes(),
                 testConsultation.getCreatedAt().toString(),
-                testConsultation.getUpdatedAt().toString()
-        );
+                testConsultation.getUpdatedAt().toString(),
+                "2026-10-15T09:30:00Z", null, 0L);
 
         // Create a second consultation for list testing
         Consultation testConsultation2 = new Consultation(
@@ -143,8 +143,8 @@ class ConsultationControllerTest {
                 consultation.getVitalSigns(),
                 consultation.getNotes(),
                 consultation.getCreatedAt().toString(),
-                consultation.getUpdatedAt().toString()
-        );
+                consultation.getUpdatedAt().toString(),
+                "2026-10-15T09:30:00Z", null, 0L);
     }
 
     @Test
@@ -242,8 +242,8 @@ class ConsultationControllerTest {
                 "Medication X",
                 "Check BP weekly",
                 "BP 130/85",
-                "Patient compliant with medication"
-        );
+                "Patient compliant with medication",
+                null, 0L);
 
         Consultation createdConsultation = new Consultation(
                 2L,
@@ -277,7 +277,7 @@ class ConsultationControllerTest {
         mockMvc.perform(post("/api/v1/patients/{patientId}/consultations", patientId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createRequest)))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.consultationId").value(2L))
                 .andExpect(jsonPath("$.consultationType").value("Follow-up"))
@@ -299,8 +299,8 @@ class ConsultationControllerTest {
                 "Medication X",
                 "Check BP weekly",
                 "BP 130/85",
-                "Patient compliant with medication"
-        );
+                "Patient compliant with medication",
+                null, 0L);
 
         // Need to mock getConsultationsByPatientIdUseCase to return an existing list so the controller gets past validation
         // Actually, for POST we don't need to consult existing data first, but let's mock it anyway to be safe
@@ -330,8 +330,8 @@ class ConsultationControllerTest {
                 "Medication X",
                 "Check BP weekly",
                 "BP 120/80",
-                "Patient doing well"
-        );
+                "Patient doing well",
+                null, 0L);
 
         Consultation existingConsultation = new Consultation(
                 consultationId,
@@ -414,8 +414,8 @@ class ConsultationControllerTest {
                 "Medication X",
                 "Check BP weekly",
                 "BP 130/85",
-                "Patient compliant with medication"
-        );
+                "Patient compliant with medication",
+                null, 0L);
 
         // Need to mock getConsultationByIdUseCase to return an existing consultation so the controller gets past the first step
         Consultation existingConsultation = new Consultation(
@@ -464,8 +464,8 @@ class ConsultationControllerTest {
                 "Medication X",
                 "Check BP weekly",
                 "BP 130/85",
-                "Patient compliant with medication"
-        );
+                "Patient compliant with medication",
+                null, 0L);
 
         // Mock the getConsultationByIdUseCase to throw exception when consultation not found
         BDDMockito.given(getConsultationByIdUseCase.getConsultationById(consultationId))

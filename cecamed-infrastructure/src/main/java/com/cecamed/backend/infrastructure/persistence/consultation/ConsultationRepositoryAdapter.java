@@ -30,7 +30,7 @@ public class ConsultationRepositoryAdapter implements ConsultationRepositoryPort
     @Override
     public Consultation save(Consultation consulta) {
         ConsultationJpaEntity entity = ConsultationJpaEntity.fromDomain(consulta);
-        return repository.save(entity).toDomain();
+        return repository.saveAndFlush(entity).toDomain();
     }
 
     @Override

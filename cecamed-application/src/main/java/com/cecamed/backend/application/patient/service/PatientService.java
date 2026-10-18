@@ -21,7 +21,7 @@ import java.util.Objects;
  */
 public class PatientService implements PatientManagementUseCase {
 
-    private static final int MAX_PAGE_SIZE = 10000; // Límite máximo de tamaño de página
+    private static final int MAX_PAGE_SIZE = 100; // Límite máximo de tamaño de página
 
     private final PatientRepositoryPort patientRepository;
     private final SecurityAuditRepositoryPort auditRepository;
@@ -37,17 +37,15 @@ public class PatientService implements PatientManagementUseCase {
 
     @Override
     public PatientResponse createPatient(PatientRequest request, String performedBy, String ipAddress, String userAgent) {
-        // El número de identificación no se proporciona en el frontend, por lo que se establece como null.
-        // En una versión futura, el frontend podría proporcionar este campo.
-        String identificationNumber = null;
+        String identificationNumber = request.getIdentificationNumber();
 
-        // Crear nuevo paciente de dominio (el número de identificación se establece como null)
+        // La identificación es opcional; el dominio la normaliza.
         Patient patient = Patient.createNew(
                 clock,
                 identificationNumber,
                 request.getFirstName(),
                 request.getLastName(),
-                parseBirthDate(request.getBirthDate()),
+                request.getBirthDate(),
                 request.getGender(),
                 request.getBloodType(),
                 request.getPhone(),
@@ -128,12 +126,15 @@ public class PatientService implements PatientManagementUseCase {
                 .orElseThrow(() -> new BusinessRuleException("PATIENT_NOT_FOUND",
                         "Paciente no encontrado con ID: " + id));
 
+        if (request.getVersion() == null || !request.getVersion().equals(patient.getVersion())) {
+            throw new com.cecamed.backend.domain.patient.StaleVersionException("El paciente cambió. Recargue antes de editar.");
+        }
         // Actualizar información (lanza PatientInactiveException si está inactivo)
         patient.updateInformation(
                 clock,
                 request.getFirstName(),
                 request.getLastName(),
-                parseBirthDate(request.getBirthDate()),
+                request.getBirthDate(),
                 request.getGender(),
                 request.getBloodType(),
                 request.getPhone(),
@@ -164,12 +165,15 @@ public class PatientService implements PatientManagementUseCase {
     }
 
     @Override
-    public void activatePatient(Long id, String performedBy, String ipAddress, String userAgent) {
+    public void activatePatient(Long id, Long version, String performedBy, String ipAddress, String userAgent) {
         // Buscar paciente existente
         Patient patient = patientRepository.findById(id)
                 .orElseThrow(() -> new BusinessRuleException("PATIENT_NOT_FOUND",
                         "Paciente no encontrado con ID: " + id));
 
+        if (version == null || !version.equals(patient.getVersion())) {
+            throw new com.cecamed.backend.domain.patient.StaleVersionException("El paciente cambió. Recargue antes de cambiar su estado.");
+        }
         // Verificar si ya está activo
         if (patient.isActive()) {
             throw new BusinessRuleException("PATIENT_ALREADY_ACTIVE",
@@ -195,12 +199,15 @@ public class PatientService implements PatientManagementUseCase {
     }
 
     @Override
-    public void deactivatePatient(Long id, String performedBy, String ipAddress, String userAgent) {
+    public void deactivatePatient(Long id, Long version, String performedBy, String ipAddress, String userAgent) {
         // Buscar paciente existente
         Patient patient = patientRepository.findById(id)
                 .orElseThrow(() -> new BusinessRuleException("PATIENT_NOT_FOUND",
                         "Paciente no encontrado con ID: " + id));
 
+        if (version == null || !version.equals(patient.getVersion())) {
+            throw new com.cecamed.backend.domain.patient.StaleVersionException("El paciente cambió. Recargue antes de cambiar su estado.");
+        }
         // Verificar si ya está inactivo
         if (!patient.isActive()) {
             throw new BusinessRuleException("PATIENT_ALREADY_INACTIVE",
@@ -227,38 +234,19 @@ public class PatientService implements PatientManagementUseCase {
 
     // --- Métodos auxiliares privados ---
 
-    /**
-     * Convierte una cadena de fecha en formato ISO-8601 (yyyy-MM-dd) a LocalDate.
-     * Asume que la cadena no es nula y está en formato válido (validado previamente).
-     *
-     * @param birthDateString fecha de nacimiento en formato ISO-8601
-     * @return objeto LocalDate
-     */
-    private LocalDate parseBirthDate(String birthDateString) {
-        return LocalDate.parse(birthDateString);
-    }
-
-    /**
-     * Mapea un objeto de dominio Patient a su DTO de respuesta PatientResponse.
-     * Calcula la edad y establece los campos de auditoría como null (no disponibles en el dominio).
-     *
-     * @patient paciente de dominio
-     * @return DTO de respuesta
-     */
     private PatientResponse toPatientResponse(Patient patient) {
         // Calcular edad a partir de la fecha de nacimiento
         Integer age = null;
         if (patient.getBirthDate() != null) {
-            age = patient.getBirthDate().until(java.time.LocalDate.now()).getYears();
+            age = patient.getBirthDate().until(java.time.LocalDate.now(clock.withZone(java.time.ZoneId.of("America/Guatemala")))).getYears();
         }
 
-        // Los campos de auditoría no están disponibles en el dominio, por lo que se establecen como null.
-        String createdAt = null;
-        String updatedAt = null;
+        String createdAt = patient.getCreatedAt().toString();
+        String updatedAt = patient.getUpdatedAt().toString();
 
-        return new PatientResponse(
+        var response = new PatientResponse(
                 patient.getId(),
-                null, // identificationNumber (no proporcionado por el frontend)
+                patient.getIdentificationNumber(),
                 patient.getFirstName(),
                 patient.getLastName(),
                 patient.getFullName(),
@@ -278,5 +266,7 @@ public class PatientService implements PatientManagementUseCase {
                 createdAt,
                 updatedAt
         );
+        response.setVersion(patient.getVersion());
+        return response;
     }
 }

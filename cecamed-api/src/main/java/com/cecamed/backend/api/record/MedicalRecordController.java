@@ -45,19 +45,20 @@ public class MedicalRecordController {
         MedicalRecord medicalRecordToUpdate = new MedicalRecord(
                 existingRecord.getPatientId(),
                 existingRecord.getRecordNumber(),
-                request.allergies() != null ? request.allergies() : existingRecord.getAllergies(),
-                request.pathologicalHistory() != null ? request.pathologicalHistory() : existingRecord.getPathologicalHistory(),
-                request.nonPathologicalHistory() != null ? request.nonPathologicalHistory() : existingRecord.getNonPathologicalHistory(),
-                request.familyHistory() != null ? request.familyHistory() : existingRecord.getFamilyHistory(),
-                request.surgicalHistory() != null ? request.surgicalHistory() : existingRecord.getSurgicalHistory(),
-                request.traumaticHistory() != null ? request.traumaticHistory() : existingRecord.getTraumaticHistory(),
-                request.currentMedications() != null ? request.currentMedications() : existingRecord.getCurrentMedications(),
-                request.generalObservations() != null ? request.generalObservations() : existingRecord.getGeneralObservations(),
-                request.gynecologicalObstetricHistory() != null ? request.gynecologicalObstetricHistory() : existingRecord.getGynecologicalObstetricHistory(),
-                request.waterGlassesPerDay() != null ? request.waterGlassesPerDay() : existingRecord.getWaterGlassesPerDay(),
-                request.mealsPerDay() != null ? request.mealsPerDay() : existingRecord.getMealsPerDay(),
+                request.allergies(),
+                request.pathologicalHistory(),
+                request.nonPathologicalHistory(),
+                request.familyHistory(),
+                request.surgicalHistory(),
+                request.traumaticHistory(),
+                request.currentMedications(),
+                request.generalObservations(),
+                request.gynecologicalObstetricHistory(),
+                request.waterGlassesPerDay(),
+                request.mealsPerDay(),
                 existingRecord.getCreatedAt(), // Keep original createdAt
-                null // updatedAt will be set by service
+                null, // updatedAt will be set by service
+                request.version()
         );
 
         var updatedMedicalRecord = updateMedicalRecordUseCase.updateMedicalRecord(patientId, medicalRecordToUpdate);
@@ -80,7 +81,7 @@ public class MedicalRecordController {
                 record.getWaterGlassesPerDay(),
                 record.getMealsPerDay(),
                 record.getCreatedAt().toString(),
-                record.getUpdatedAt().toString()
+                record.getUpdatedAt().toString(), record.getVersion()
         );
     }
 }

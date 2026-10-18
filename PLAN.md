@@ -1,3 +1,77 @@
+# Ejecución por incrementos
+
+## Incremento 1: estabilizar lo existente — completado
+
+Rama: `feature/incremento-1-estabilizacion`.
+
+Implementado:
+- Servicios clínicos registrados y patrones Spring Security válidos; MEDICO accede
+  a contenido clínico, RECEPCION a pacientes y ADMIN a usuarios.
+- Flyway V1–V5 sin versiones duplicadas. V4 conserva el SQL del antiguo expediente
+  V2; V5 hace opcional la identificación, genera IDs de consultas, agrega CIE-10
+  y completa expedientes de pacientes existentes.
+- Alta de paciente y expediente inicial en una transacción; identificación opcional
+  única cuando existe; validación de fecha civil en America/Guatemala.
+- Búsqueda literal por nombre completo, identificación, teléfono, email y expediente,
+  filtros y paginación; auditoría con usuario autenticado, IP y User-Agent reales.
+- Timestamps UTC con precisión de microsegundos; versiones preservadas en todos
+  los mapeos. Ediciones y activación/desactivación requieren la versión del cliente.
+- Consultas con paciente válido/activo al crear, IDs y fechas del servidor, CIE-10,
+  lectura y edición desde el frontend; conflictos devuelven 409 sin sobrescribir.
+- Sesión frontend con rotación de refresh compartida entre peticiones, persistencia
+  en la pestaña y revocación al salir. ADMIN reconocido y excluido de rutas clínicas.
+- Contrato frontend adaptado a rutas anidadas, DTO clínico y listado paginado;
+  eliminado filePath del tipo público de documentos.
+
+Validación final (2026-10-18): 103 pruebas normales, 8 pruebas PostgreSQL y
+4 pruebas del cliente aprobadas; compilación frontend real y simulada aprobada.
+
+Condición de cierre: `./gradlew build`, pruebas del cliente y compilación frontend,
+además del contrato login → paciente → expediente → consulta con PostgreSQL real.
+El contrato se ejecuta tanto en pruebas normales (H2) como con Flyway/PostgreSQL,
+incluyendo versiones obsoletas, escrituras simultáneas, permisos, auditoría,
+validación, búsqueda, rotación y logout. Ver comandos y evidencia en README.
+
+Revisión del análisis recibido:
+
+| Área | Estado en esta entrega |
+| --- | --- |
+| Arquitectura y migraciones | Arranque integrado y esquema validados |
+| Identidad | Login, refresh, logout, roles y auditoría integrados |
+| Pacientes | Alta, lectura, búsqueda, edición y estado persistidos |
+| Expediente | Creación inicial, lectura y edición con versión |
+| Consultas básicas | Alta, listado, detalle y edición con versión |
+| Firma/enmiendas, documentos, agenda y recepción | Incremento 2 |
+| Inventario, reportes y operación | Incremento 3 |
+
+Al iniciar se encontraron cambios **sin commit** de los incrementos 2 y 3 en el
+worktree de inventario. Incluyen código de firma, documentos, agenda, inventario,
+reportes y despliegue; por tanto, afirmar que no existe ninguna implementación
+ya no describe ese directorio. No se incluyeron ni validaron en esta rama y no
+se consideran entregados. Se conservaron íntegros en el worktree original.
+Las futuras ramas deben reasignar sus migraciones V5/V6 después de esta V5,
+antes de integrarlas; nunca editar checksums de migraciones ya aplicadas.
+
+Limitaciones que siguen abiertas: simulador con `@ts-nocheck`, aceptación visual
+completa del navegador, PostgreSQL 16 de Compose en CI y funcionalidades de los
+incrementos siguientes. La validación local usa PostgreSQL 18.6 temporal.
+
+## Incremento 2: completar la operación clínica
+
+Firma y enmiendas, documentos, agenda, horarios, bloqueos, recepción, historial,
+dashboard y pruebas de conflictos concurrentes y permisos.
+
+## Incremento 3: inventario, reportes y preparación operativa
+
+Definir e implementar reglas y pantallas, despliegue reproducible, respaldo y
+restauración, almacenamiento persistente y verificaciones operativas. Calendar
+es opcional y requiere concretar su alcance.
+
+---
+
+El plan anterior de fase 4 se conserva como referencia de requisitos pendientes;
+no representa funcionalidades ya implementadas.
+
 # Plan de Implementación - Fase 4: Expediente, consultas y documentos
 
 ## Visión General

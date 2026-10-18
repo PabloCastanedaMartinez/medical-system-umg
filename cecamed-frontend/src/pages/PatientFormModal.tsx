@@ -85,7 +85,7 @@ export function PatientFormModal({ open, patient, onClose, onSaved }: Props) {
     if (!form.firstName.trim()) return 'El nombre del paciente es obligatorio';
     if (!form.lastName.trim()) return 'El apellido del paciente es obligatorio';
     if (!form.birthDate) return 'La fecha de nacimiento es obligatoria';
-    if (form.birthDate >= today) return 'La fecha de nacimiento debe ser una fecha pasada';
+    if (form.birthDate > today) return 'La fecha de nacimiento no puede ser futura';
     if (!form.gender) return 'El género/sexo es obligatorio';
     if (form.email.trim() && !/^[A-Za-z0-9+_.-]+@(.+)$/.test(form.email.trim()))
       return 'El formato del correo electrónico es inválido';
@@ -100,6 +100,7 @@ export function PatientFormModal({ open, patient, onClose, onSaved }: Props) {
       return;
     }
     const body: PatientRequest = {
+      version: patient?.version,
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
       birthDate: form.birthDate,

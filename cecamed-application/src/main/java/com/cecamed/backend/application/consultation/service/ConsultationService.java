@@ -20,7 +20,13 @@ public class ConsultationService implements
 
     private final ConsultationRepositoryPort consultationRepository;
 
-    public ConsultationService(ConsultationRepositoryPort consultationRepository) {
+    private final com.cecamed.backend.application.patient.port.out.PatientRepositoryPort patients;
+    private final java.time.Clock clock;
+
+    public ConsultationService(ConsultationRepositoryPort consultationRepository,
+            com.cecamed.backend.application.patient.port.out.PatientRepositoryPort patients, java.time.Clock clock) {
+        this.patients = patients;
+        this.clock = clock;
         this.consultationRepository = consultationRepository;
     }
 
@@ -32,11 +38,15 @@ public class ConsultationService implements
 
     @Override
     public List<Consultation> getConsultationsByPatientId(Long patientId) {
+        requirePatient(patientId);
         return consultationRepository.findByPatientId(patientId);
     }
 
     @Override
     public Consultation createConsultation(Consultation consulta) {
+        var patient = requirePatient(consulta.getPatientId());
+        if (!patient.isActive()) throw new com.cecamed.backend.domain.patient.PatientInactiveException("Paciente inactivo.");
+        consulta.initialize(clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
         return consultationRepository.save(consulta);
     }
 
@@ -46,27 +56,35 @@ public class ConsultationService implements
         Consultation existing = consultationRepository.findById(consultationId)
                 .orElseThrow(() -> new ConsultationNotFoundException(consultationId));
 
+        if (!existing.getPatientId().equals(consulta.getPatientId())) throw new ConsultationNotFoundException(consultationId);
+        if (consulta.getVersion() == null || !consulta.getVersion().equals(existing.getVersion())) {
+            throw new com.cecamed.backend.domain.patient.StaleVersionException("La consulta cambió. Recargue antes de editar.");
+        }
         // Update the fields (keeping the same consultationId and patientId which are immutable)
         Consultation updated = new Consultation(
                 existing.getConsultationId(),
                 existing.getPatientId(),
-                consulta.getConsultationDate() != null ? consulta.getConsultationDate() : existing.getConsultationDate(),
-                consulta.getConsultationType() != null ? consulta.getConsultationType() : existing.getConsultationType(),
-                consulta.getDoctorName() != null ? consulta.getDoctorName() : existing.getDoctorName(),
-                consulta.getReasonForVisit() != null ? consulta.getReasonForVisit() : existing.getReasonForVisit(),
-                consulta.getSymptoms() != null ? consulta.getSymptoms() : existing.getSymptoms(),
-                consulta.getExaminationFindings() != null ? consulta.getExaminationFindings() : existing.getExaminationFindings(),
-                consulta.getDiagnosis() != null ? consulta.getDiagnosis() : existing.getDiagnosis(),
-                consulta.getTreatmentPlan() != null ? consulta.getTreatmentPlan() : existing.getTreatmentPlan(),
-                consulta.getPrescriptions() != null ? consulta.getPrescriptions() : existing.getPrescriptions(),
-                consulta.getFollowUpInstructions() != null ? consulta.getFollowUpInstructions() : existing.getFollowUpInstructions(),
-                consulta.getVitalSigns() != null ? consulta.getVitalSigns() : existing.getVitalSigns(),
-                consulta.getNotes() != null ? consulta.getNotes() : existing.getNotes(),
+                existing.getConsultationDate(),
+                consulta.getConsultationType(),
+                consulta.getDoctorName(),
+                consulta.getReasonForVisit(),
+                consulta.getSymptoms(),
+                consulta.getExaminationFindings(),
+                consulta.getDiagnosis(),
+                consulta.getTreatmentPlan(),
+                consulta.getPrescriptions(),
+                consulta.getFollowUpInstructions(),
+                consulta.getVitalSigns(),
+                consulta.getNotes(),
                 existing.getCreatedAt(), // Keep original createdAt
-                consulta.getUpdatedAt() != null ? consulta.getUpdatedAt() : existing.getUpdatedAt(), // Set new updatedAt
+                clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS),
                 existing.getVersion() // Keep existing version - will be incremented by JPA
         );
 
+        updated.setIcd10Code(consulta.getIcd10Code());
         return consultationRepository.save(updated);
+    }
+    private com.cecamed.backend.domain.patient.Patient requirePatient(Long id) {
+        return patients.findById(id).orElseThrow(() -> new com.cecamed.backend.application.shared.ResourceNotFoundException("Paciente no encontrado."));
     }
 }
