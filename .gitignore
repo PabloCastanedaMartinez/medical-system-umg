@@ -45,6 +45,7 @@ uploads/
 logs/
 *.log
 *.log.*
+@pablo ➜ CECAMed-backend git(main)
 
 # Cachés de scripts auxiliares
 __pycache__/

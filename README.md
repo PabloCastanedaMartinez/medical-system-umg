@@ -50,22 +50,21 @@ En el frontend, `src/api` concentra transporte y contratos; `src/auth` gestiona 
 
 ## Requisitos
 
-- BellSoft Liberica JDK **21**, disponible mediante `JAVA_HOME` y `PATH`. Gradle exige el proveedor BellSoft.
+- JDK **21 o superior**, de cualquier proveedor y compatible con el Gradle Wrapper del proyecto, disponible mediante `JAVA_HOME` y `PATH`. La compilación usa el JDK con el que se ejecuta Gradle y genera código compatible con Java 21 mediante `--release 21`.
 - Node.js **20 o superior** y npm.
 - Docker con Compose, o una instancia PostgreSQL 16 preparada por separado.
 - Acceso a los repositorios de dependencias durante la primera instalación.
 
 Los comandos siguientes parten de la raíz del repositorio y usan Bash. En Windows se puede usar `gradlew.bat` en lugar de `./gradlew`; la asignación de variables de entorno debe adaptarse al shell.
 
-Para la instalación de BellSoft disponible en este equipo:
+Configurar la ruta de la instalación del JDK:
 
 ```bash
-export JAVA_HOME="$HOME/.jdks/liberica-full-21.0.12.1"
+export JAVA_HOME="/ruta/al/jdk"
 export PATH="$JAVA_HOME/bin:$PATH"
 java -version
 ```
 
-En otros equipos, ajustar la ruta a su instalación de Liberica 21.
 IntelliJ debe usar ese JDK también como Gradle JVM.
 
 ## Inicio rápido con API real
@@ -321,7 +320,7 @@ El backend no incorpora automáticamente el contenido de `dist/` al JAR. Swagger
 
 | Síntoma | Revisar |
 | --- | --- |
-| Gradle no inicia | JDK 21, `JAVA_HOME`, permisos del wrapper y descarga inicial de dependencias. |
+| Gradle no inicia | JDK 21 o superior compatible con el wrapper, `JAVA_HOME`, permisos del wrapper y descarga inicial de dependencias. |
 | La API no conecta a PostgreSQL | `docker compose ps`, `DB_PASSWORD`, puerto `5433` y precedencia de `DB_URL`. |
 | Cambiar `.env` no cambia la contraseña de PostgreSQL | El volumen conserva la base inicializada; actualizar la contraseña en PostgreSQL y la configuración de forma coordinada. |
 | El navegador no alcanza la API | Destino `CECAMED_API_URL`, proxy `/api` o `VITE_API_BASE_URL`; CORS si hay distintos orígenes. |

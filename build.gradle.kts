@@ -16,8 +16,8 @@ subprojects {
     }
 
     configure<JavaPluginExtension> {
-        toolchain.languageVersion.set(JavaLanguageVersion.of(21))
-        toolchain.vendor.set(JvmVendorSpec.BELLSOFT)
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     dependencies {
