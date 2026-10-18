@@ -1,6 +1,8 @@
 package com.cecamed.backend.api.error;
 
 import com.cecamed.backend.application.shared.ResourceNotFoundException;
+import com.cecamed.backend.domain.record.MedicalRecordNotFoundException;
+import com.cecamed.backend.domain.consultation.ConsultationNotFoundException;
 import com.cecamed.backend.domain.identity.exception.AccountInactiveException;
 import com.cecamed.backend.domain.identity.exception.AccountLockedException;
 import com.cecamed.backend.domain.identity.exception.InvalidCredentialsException;
@@ -79,6 +81,16 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     ProblemDetail handleNotFound(ResourceNotFoundException exception, WebRequest request) {
         return problem(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(MedicalRecordNotFoundException.class)
+    ProblemDetail handleMedicalRecordNotFound(MedicalRecordNotFoundException exception, WebRequest request) {
+        return problem(HttpStatus.NOT_FOUND, "MEDICAL_RECORD_NOT_FOUND", exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(ConsultationNotFoundException.class)
+    ProblemDetail handleConsultationNotFound(ConsultationNotFoundException exception, WebRequest request) {
+        return problem(HttpStatus.NOT_FOUND, "CONSULTATION_NOT_FOUND", exception.getMessage(), request);
     }
 
     @ExceptionHandler(BusinessRuleException.class)
